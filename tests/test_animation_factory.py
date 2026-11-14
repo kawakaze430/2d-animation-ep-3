@@ -73,7 +73,7 @@ class ReusableFactoryTests(unittest.TestCase):
         held = slow.sample(2.001).hand_targets["right"][1]
         self.assertLess(abs(near_end - held), .01)
         self.assertAlmostEqual(held, .5)
-        self.assertIn("reach", slow.sample(4)["active"])
+        self.assertIn("reach", slow.sample(4).active)
 
     def test_invalid_actions_are_rejected_early(self):
         invalid = [
