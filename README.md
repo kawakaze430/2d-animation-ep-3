@@ -1,4 +1,20 @@
-# English teaching animation — Python 2D
+# AnimFactory — reusable Python 2D animation platform (in development)
+
+**New independent product core:** [animfactory/](animfactory/README.md).
+Build a completely new animation project with a versioned JSON format,
+safe transparent rig/PNG import, project-owned reusable motion clips,
+frame-accurate timeline, editable browser studio and local Pillow/FFmpeg
+technical exports. See [milestones and implementation ledger](animfactory/ROADMAP.md).
+This is a product foundation, not a claim that all rigging, hosted, AI,
+facial animation or production film tools are complete.
+
+The existing English teaching renderer, Episode 02 and Episode 03 projects
+remain preserved as compatibility fixtures and real-world acceptance tests.
+No product license has been selected or changed. Local rendering works
+without external AI services or paid subscriptions.
+
+## Existing film/episode workflows
+
 
 **Render on GitHub Actions:** open [Render 2D animation](https://github.com/kawakaze430/2d-animation-ep-3/actions/workflows/render-2d.yml),
 choose **Run workflow**, then select the episode, narration mode, scope and worker count.
