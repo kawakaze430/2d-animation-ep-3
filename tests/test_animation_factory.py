@@ -196,6 +196,20 @@ class ReusableFactoryTests(unittest.TestCase):
             self.assertEqual(chunk(manifest, "blocking", 0, 2, part, size=(160, 90))["hashes"],
                              result["hashes"])
 
+    def test_generic_actor_blink_is_visible_in_browser_schematic(self):
+        from PIL import Image, ImageChops
+        actor = Actor("JUNO", placement={
+            "position": [200, 240], "scale": 1,
+            "actions": [{"clip": "blink", "start": 0, "end": 1}]
+        })
+        before, during = Image.new("RGBA", (440, 420)), Image.new("RGBA", (440, 420))
+        actor.draw(before, .2, duration=4)
+        actor.draw(during, .5, duration=4)
+        delta = ImageChops.difference(before.convert("RGB"), during.convert("RGB"))
+        self.assertIsNotNone(delta.getbbox())
+        self.assertFalse(actor.pose(.2, 4)["blink"])
+        self.assertTrue(actor.pose(.5, 4)["blink"])
+
     def test_original_manifest_remains_unchanged(self):
         initial = SOURCE.read_bytes()
         compile_scene(SOURCE, SHOT)
