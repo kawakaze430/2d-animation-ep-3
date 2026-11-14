@@ -108,6 +108,8 @@ def compile_scene(manifest, scene, *, templates=None, root=REPO):
             raise ValueError("Prop must have a named ID")
         original = props.get(prop["id"], {})
         original.update(deepcopy(prop))
+        if "interaction" in prop:
+            original.pop("attachment", None)  # modern interaction supersedes legacy binding
         if "file" in original:
             original["file"] = _resolve_asset(original["file"], Path(root))
         interaction = original.get("interaction")
@@ -119,6 +121,15 @@ def compile_scene(manifest, scene, *, templates=None, root=REPO):
                 raise ValueError("Prop interaction needs valid attach_at and release_at")
             if "landing" not in interaction:
                 raise ValueError("Prop interaction requires a final landing position")
+            from .engine import Actor, attachment_transform
+            cast_actor = Actor(interaction["actor"], placement=shot["actors"][interaction["actor"]])
+            hand = attachment_transform(cast_actor, min(end, shot["duration"] - 1e-6),
+                                        interaction, shot["duration"])
+            landing = interaction["landing"]
+            distance = float(((hand.position[0]-landing[0])**2 +
+                              (hand.position[1]-landing[1])**2)**.5)
+            if distance > float(interaction.get("contact_tolerance", 24)):
+                raise ValueError(f"{prop['id']}: object would teleport {distance:.1f}px on release")
         props[prop["id"]] = original
     shot["props"] = list(props.values())
     if "foreground" in conf:
