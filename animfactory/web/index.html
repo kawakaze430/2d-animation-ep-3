@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Animation Factory — Studio</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="toolbar">
+    <div><strong>ANIM<span>FACTORY</span></strong> <small>Independent 2D studio • local preview</small></div>
+    <div class="controls">
+      <button id="undo" title="Undo last edit" disabled>↶ Undo</button>
+      <button id="redo" title="Redo last edit" disabled>↷ Redo</button>
+      <span id="saveState" role="status">Loading…</span>
+    </div>
+  </header>
+  <div class="workspace">
+    <aside class="sidebar">
+      <h2>Project</h2>
+      <div id="projectInfo" class="muted"></div>
+      <section>
+        <div class="section-head"><h3>Scenes</h3><button id="newScene" title="Add scene">+</button></div>
+        <div id="scenes" class="list"></div>
+      </section>
+      <section>
+        <div class="section-head"><h3>Characters</h3><button id="newActor" title="Place existing rig">+</button></div>
+        <div id="actors" class="list"></div>
+      </section>
+      <section>
+        <h3>Motion library</h3>
+        <input id="searchMotions" type="search" placeholder="Search motion presets" aria-label="Search motion library">
+        <div id="motions" class="list scrollbox"></div>
+        <p class="muted tiny">Motions are project-scoped. Import rigs and new clips with the CLI; no AI connection required.</p>
+      </section>
+      <section>
+        <h3>Assets</h3>
+        <div id="assets" class="muted small"></div>
+      </section>
+    </aside>
+    <main>
+      <div class="section-head">
+        <div><h1 id="sceneTitle">Scene preview</h1><p class="muted tiny">Frames are rendered by the same Python engine used for exports.</p></div>
+        <div><label for="renderMode" class="muted small">Render mode</label>
+          <select id="renderMode"><option value="blocking">Blocking (schematic)</option><option value="production">Production (real rig required)</option></select>
+        </div>
+      </div>
+      <div class="viewport"><img id="frameImage" alt="Current animation frame rendered by Python"><div id="frameError" class="frame-error" hidden></div></div>
+      <div class="transport">
+        <button id="play" title="Preview animation, one rendered frame per request">▶ Preview</button>
+        <input id="scrub" type="range" min="0" max="0" step="1" value="0" aria-label="Animation frame">
+        <output id="timeCode">00:00.000</output>
+        <a id="exportFrame" href="#" download="frame.png">Export PNG</a>
+      </div>
+      <p class="muted tiny">Interactive preview is frame-on-demand and may play below real-time. MP4 technical export is available through the CLI and original FFmpeg pipeline.</p>
+      <section class="timeline">
+        <div class="section-head"><h2>Timeline</h2><button id="addClip">+ Add selected motion</button></div>
+        <div id="trackRows"><p class="muted">Choose an actor to inspect its tracks.</p></div>
+      </section>
+    </main>
+    <aside class="inspector">
+      <h2>Inspector</h2>
+      <div id="inspectorEmpty" class="muted">Select an actor or animation to edit its properties.</div>
+      <div id="actorInspector" hidden>
+        <h3 id="selectedActor"></h3>
+        <label>World X <input id="actorX" type="number" step="1"></label>
+        <label>World Y <input id="actorY" type="number" step="1"></label>
+        <label>Scale <input id="actorScale" type="number" min="0.01" max="100" step="0.05"></label>
+        <button id="saveActor" class="primary">Apply position &amp; scale</button>
+        <p class="muted tiny">Coordinates are project canvas pixels. Undo/redo saves to project.json.</p>
+      </div>
+      <div id="clipInspector" hidden>
+        <h3 id="selectedClip"></h3>
+        <label>Start frame <input id="clipStart" type="number" min="0" step="1"></label>
+        <label>End frame <input id="clipEnd" type="number" min="1" step="1"></label>
+        <button id="saveClip" class="primary">Apply clip timing</button>
+        <button id="removeClip" class="danger">Remove clip</button>
+      </div>
+      <section class="diagnostics">
+        <h3>Diagnostics</h3>
+        <div id="diagnostics" class="muted small">No errors.</div>
+      </section>
+    </aside>
+  </div>
+</body>
+</html>
