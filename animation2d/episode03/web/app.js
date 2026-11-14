@@ -119,6 +119,22 @@
     $('camera').textContent = source.camera || (typeof shot.camera === 'object' ? JSON.stringify(shot.camera) : shot.camera || '');
     $('action').textContent = shot.action || shot.description || source.action || '';
     $('notice').textContent = `${preview.notice || ''} Picture review; performed voices are not included.${shot.blocking_authored === false ? ' This shot currently uses default staging.' : ''}`;
+    const tracks = $('action-tracks');
+    clear(tracks);
+    for (const actorName of cast(shot)) {
+      const actor = (shot.actors || {})[actorName] || {};
+      const clips = actor.actions || (actor.action ? [actor.action] : []);
+      for (const clip of clips) {
+        const kind = String(clip.clip || clip.kind || 'idle');
+        const begin = Number(clip.start ?? 0), finish = Number(clip.end ?? duration(shot));
+        const chip = node('button', `${actorName}: ${kind} · ${begin.toFixed(2)}–${finish.toFixed(2)}s`, 'action-clip');
+        chip.type = 'button';
+        chip.setAttribute('aria-label', `Inspect ${actorName} ${kind} at ${begin.toFixed(2)} seconds`);
+        chip.addEventListener('click', () => { stop(); displayFrame(begin); });
+        tracks.append(chip);
+      }
+    }
+    if (!tracks.children.length) tracks.append(node('p', 'No authored action clips in this shot yet.', 'muted'));
     $('props').textContent = shot.props ? `Props: ${Array.isArray(shot.props) ? shot.props.map(p => typeof p === 'string' ? p : p.id || p.name || p.type || JSON.stringify(p)).join(' · ') : JSON.stringify(shot.props)}` : '';
     clear($('shot-cast')); for (const name of cast(shot)) $('shot-cast').append(node('span', name, 'cast-chip'));
     clear($('dialogue'));

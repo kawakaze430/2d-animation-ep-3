@@ -538,3 +538,8 @@ output {
 .ledger[open] summary {
   margin-bottom:8px;
 }
+
+/* Reusable actor clip inspector; markup uses text nodes only. */
+#action-tracks{display:flex;flex-wrap:wrap;gap:7px;padding-top:8px}
+.action-clip{font-size:12px;color:var(--accent);border-color:var(--line);white-space:normal;text-align:left}
+.action-clip:hover{background:#33403b}

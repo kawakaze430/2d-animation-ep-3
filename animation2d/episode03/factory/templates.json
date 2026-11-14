@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "environments": {
+    "home_kitchen": {
+      "location": "HOME_KITCHEN",
+      "background": "Episode_03/assets/environments/HOME_KITCHEN.jpg"
+    },
+    "prep_island": {
+      "location": "PREP_ISLAND",
+      "background": "Episode_03/assets/environments/PREP_ISLAND.png"
+    },
+    "stove_station": {
+      "location": "STOVE_STATION",
+      "background": "Episode_03/assets/environments/STOVE_STATION.png"
+    },
+    "home_table": {
+      "location": "HOME_TABLE",
+      "background": "Episode_03/assets/environments/HOME_TABLE.jpg"
+    }
+  },
+  "cameras": {
+    "three_shot": {
+      "center": [
+        960,
+        540
+      ],
+      "zoom": 1,
+      "angle": 0
+    },
+    "medium": {
+      "center": [
+        960,
+        540
+      ],
+      "zoom": 1.2,
+      "angle": 0
+    },
+    "wide": {
+      "center": [
+        960,
+        540
+      ],
+      "zoom": 0.85,
+      "angle": 0
+    },
+    "close_left": {
+      "center": [
+        600,
+        530
+      ],
+      "zoom": 1.65,
+      "angle": 0
+    },
+    "close_right": {
+      "center": [
+        1320,
+        530
+      ],
+      "zoom": 1.65,
+      "angle": 0
+    }
+  }
+}

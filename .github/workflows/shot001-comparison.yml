@@ -1,0 +1,116 @@
+name: Episode 03 SHOT_001 - fair A/B comparison
+
+# Manual only: never burn runner minutes rendering for ordinary commits or PRs.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: episode03-real-comparison
+  cancel-in-progress: false
+
+jobs:
+  shared_inputs:
+    name: Lock real artwork and synthesize one identical narration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Install minimal art validation
+        run: |
+          mkdir -p build/shot001/preflight
+          python -m pip install -r animation2d/project/requirements.txt
+      - name: Reject absent transparent rigs BEFORE model downloads or rendering
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m benchmark.shot001.common --check-art-only 2>&1 | tee build/shot001/preflight/art-check.txt
+      - name: Install audio and Kokoro CPU dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends espeak-ng libespeak-ng1 ffmpeg
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install 'kokoro==0.9.4' 'transformers<5' soundfile espeakng-loader phonemizer 'huggingface_hub>=0.25,<1'
+          python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+      - name: Download verified model and six configured voice tensors (three used in this shot)
+        id: voice
+        run: |
+          python tools/setup_voice.py \
+            --output build/shot001/voice-tools \
+            --voices af_heart af_bella af_nova am_michael am_fenrir am_puck \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Synthesize ONLY the SHOT_001 original three lines once
+        env:
+          MODELS: ${{ steps.voice.outputs.model_dir }}
+          RHUBARB: ${{ steps.voice.outputs.rhubarb }}
+        run: |
+          python -m animation2d.episode03.voice \
+            --manifest animation2d/episode03/shots.json \
+            --shot SHOT_001 \
+            --models "$MODELS" \
+            --rhubarb "$RHUBARB" \
+            --output build/shot001/shared_audio
+      - name: Validate common original art, isolated mouth cues and shared WAV
+        run: |
+          python -m benchmark.shot001.common \
+            --audio-dir build/shot001/shared_audio > build/shot001/preflight/contract.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: shot001-shared-master
+          path: build/shot001/shared_audio/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Upload source-readiness report even when blocked
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: SHOT_001-preflight
+          path: build/shot001/preflight/
+          if-no-files-found: warn
+          retention-days: 30
+
+  python:
+    needs: shared_inputs
+    uses: ./.github/workflows/shot001-python.yml
+
+  rigby:
+    needs: shared_inputs
+    uses: ./.github/workflows/shot001-rigby.yml
+
+  comparison:
+    name: Verify both real media artifacts and compare measurements
+    runs-on: ubuntu-24.04
+    needs: [python, rigby]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/download-artifact@v4
+        with:
+          name: SHOT_001-Version-A
+          path: build/shot001/comparison/A
+      - uses: actions/download-artifact@v4
+        with:
+          name: SHOT_001-Version-B
+          path: build/shot001/comparison/B
+      - name: Reject unequal artwork/audio, fake Rigby exports and invalid videos
+        run: |
+          python -m benchmark.shot001.compare \
+            --python build/shot001/comparison/A/build/shot001/version-a \
+            --rigby build/shot001/comparison/B/build/shot001/version-b \
+            --output build/shot001/comparison/report
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: SHOT_001-Paired-Benchmark
+          path: build/shot001/comparison/report/
+          if-no-files-found: warn
+          retention-days: 30

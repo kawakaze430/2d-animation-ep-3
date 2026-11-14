@@ -1,0 +1,97 @@
+name: SHOT_001 Version B - Python plus Rigby2D
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  rigby:
+    name: Version B - real Rigby bones and PNG frames + Pillow/FFmpeg
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      PYTHONUNBUFFERED: '1'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      RIGBY_SHA: b1792f67896de7d30503ffc8340801699b73f08d
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Record runner start
+        run: |
+          mkdir -p build/shot001/version-b
+          date -u +%Y-%m-%dT%H:%M:%S.%NZ > build/shot001/version-b/runner_start.txt
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Install shared renderer and FFmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg time
+          python -m pip install -r animation2d/project/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: shot001-shared-master
+          path: build/shot001/shared_audio
+      - name: Fail-closed production rig and shared audio preflight
+        run: python -m benchmark.shot001.common --audio-dir build/shot001/shared_audio
+      - name: Fetch official Rigby2D at a reviewed immutable source commit
+        shell: bash
+        run: |
+          mkdir -p third_party/rigby2d
+          git -C third_party/rigby2d init -q
+          git -C third_party/rigby2d remote add origin https://github.com/jaisurya-dev-art/rigby2d.git
+          git -C third_party/rigby2d fetch --depth 1 origin "$RIGBY_SHA"
+          git -C third_party/rigby2d checkout --detach FETCH_HEAD
+          test "$(git -C third_party/rigby2d rev-parse HEAD)" = "$RIGBY_SHA"
+          git -C third_party/rigby2d rev-parse HEAD > build/shot001/version-b/rigby-source-commit.txt
+          # MCP frame exporting requires only the Node.js core, not a GUI, Vite or Tauri.
+          node third_party/rigby2d/src/mcp/server.js --help
+      - name: Prepare real source PNGs and authored bone timelines
+        run: |
+          python -m benchmark.shot001.common \
+            --audio-dir build/shot001/shared_audio \
+            --stage build/shot001/rigby_stage
+      - name: Create Rigby work projects and export real RGBA frames
+        run: |
+          /usr/bin/time -v -o build/shot001/version-b/rigby-resource.txt \
+            node benchmark/shot001/rigby.mjs \
+              build/shot001/rigby_stage/rigby_stage.json \
+              third_party/rigby2d \
+              build/shot001/rigby_export
+      - name: Composite real Rigby character PNGs into same Python scene and encode
+        run: |
+          /usr/bin/time -v -o build/shot001/version-b/composition-resource.txt \
+            python -m benchmark.shot001.render \
+              --version rigby \
+              --audio-dir build/shot001/shared_audio \
+              --rigby-meta build/shot001/rigby_export/export_metadata.json \
+              --output build/shot001/version-b
+      - name: Archive editable Rigby source files and actual animation evidence
+        if: always()
+        run: |
+          mkdir -p build/shot001/version-b/rigby_sources
+          cp build/shot001/rigby_export/*.rigby build/shot001/version-b/rigby_sources/ 2>/dev/null || true
+          cp build/shot001/rigby_export/export_metadata.json build/shot001/version-b/rigby_sources/ 2>/dev/null || true
+          cp build/shot001/rigby_stage/rigby_stage.json build/shot001/version-b/rigby_sources/ 2>/dev/null || true
+          date -u +%Y-%m-%dT%H:%M:%S.%NZ > build/shot001/version-b/runner_end.txt
+          git rev-parse HEAD > build/shot001/version-b/revision.txt
+          python --version > build/shot001/version-b/python-version.txt 2>&1
+          node --version > build/shot001/version-b/node-version.txt
+          ffmpeg -version > build/shot001/version-b/ffmpeg-version.txt 2>&1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: SHOT_001-Version-B
+          path: |
+            build/shot001/version-b/
+            benchmark/shot001/
+            animation2d/episode03/shots.json
+            animation2d/episode03/characters.json
+            Episode_03/ANIMATION_2D.md
+          if-no-files-found: warn
+          retention-days: 30
