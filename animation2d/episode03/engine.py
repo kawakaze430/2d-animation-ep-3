@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from .kinematics import angle, camera_point, ease, ik, place, rot, walk_foot, wrist_angle
 from .actions import ActionMixer
+from .camera_clips import sample_camera
 
 REPO = Path(__file__).resolve().parents[2]
 CAST = ('DAN','MAYA','NINA','LEO','ELLA','MAX')
@@ -375,7 +376,7 @@ def render_frame(manifest,shot_id,local_time,mode='blocking',size=(960,540),audi
                     if name not in actors:raise ValueError(f'Attachment references invisible actor {name}')
                     transform=attachment_transform(actors[name],local_time,attachment,duration)
             _draw_prop(canvas,item,transform,base)
-    camera=shot.get('camera',{})
+    camera=sample_camera(shot.get('camera',{}), shot.get('camera_animation'), local_time, duration)
     zoom=float(camera.get('zoom',1))
     camera_point([0,0],camera,size,canvas_size)  # Validate the same transform used by tests/UI.
     center=camera.get('center',[canvas.width/2,canvas.height/2])
