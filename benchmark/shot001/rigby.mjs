@@ -8,10 +8,11 @@ import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { pathToFileURL } from 'node:url';
 
-const [stageFile, rigbyRoot, outputRoot] = process.argv.slice(2);
-if (!stageFile || !rigbyRoot || !outputRoot) {
+const [stageFile, rigbyRoot, outputArg] = process.argv.slice(2);
+if (!stageFile || !rigbyRoot || !outputArg) {
   throw new Error('Usage: node rigby.mjs rigby_stage.json /path/to/rigby2d build/shot001/rigby');
 }
+const outputRoot = path.resolve(outputArg);
 const imports = async (file) => import(pathToFileURL(path.resolve(rigbyRoot, file)).href);
 const { Skeleton, makeBone, makeSlot, makeAttachment } = await imports('src/core/model.js');
 const { transform } = await imports('src/core/math.js');
@@ -52,11 +53,12 @@ for (const id of stage.cast) {
     doc.bones.push(makeBone(part.id, 0, transform(0, 0, 0), 1));
     const p = part.pivot;
     const offset = transform(part.width / 2 - p[0], p[1] - part.height / 2);
-    const att = makeAttachment('base', part.image, offset, part.width, part.height);
+    const imageId = part.image.replace(/\.png$/i, '');
+    const att = makeAttachment('base', imageId, offset, part.width, part.height);
     const slot = makeSlot('slot_' + part.id, i, att);
     doc.slots.push(slot);
-    doc.images.push({ name: part.image, path: null, width: part.width, height: part.height });
-    images.set(part.image, await fs.readFile(path.join(path.dirname(stageFile), part.image)));
+    doc.images.push({ name: imageId, path: null, width: part.width, height: part.height });
+    images.set(imageId, await fs.readFile(path.join(path.dirname(stageFile), part.image)));
     const tl = animation.boneTimelineMut(i);
     for (const [t, x, y, degrees, factor] of part.frames) {
       setKey(tl.translate, t, [x, y]);
@@ -69,12 +71,13 @@ for (const id of stage.cast) {
       slot.attachments[0].name = 'X';
       slot.attachment = 'X';
       for (const [shape, face] of Object.entries(actor.faces)) {
-        const a = makeAttachment(shape, face.image,
+        const faceId = face.image.replace(/\.png$/i, '');
+        const a = makeAttachment(shape, faceId,
           transform(face.width / 2 - p[0], p[1] - face.height / 2),
           face.width, face.height);
         slot.attachments.push(a);
-        doc.images.push({ name: face.image, path: null, width: face.width, height: face.height });
-        images.set(face.image, await fs.readFile(path.join(path.dirname(stageFile), face.image)));
+        doc.images.push({ name: faceId, path: null, width: face.width, height: face.height });
+        images.set(faceId, await fs.readFile(path.join(path.dirname(stageFile), face.image)));
       }
       const slotTl = animation.slotTimelineMut(slotIndex);
       for (const [t, shape] of actor.mouth_keys) {
