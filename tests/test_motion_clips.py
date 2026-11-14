@@ -87,6 +87,21 @@ class SkeletalClipLibraryTests(unittest.TestCase):
             ActionMixer({"actions": [{"clip": "keyframed", "source": "nonexistent",
                                      "start": 0, "end": 2}]}, 4)
 
+    def test_named_motion_demo_reuses_identical_clip_across_three_shots(self):
+        from animation2d.episode03.factory_demo import manifest_for_demo
+        manifest = manifest_for_demo(MANIFEST, named_motion="greet")
+        self.assertEqual(len(manifest["shots"]), 3)
+        signatures = set()
+        for shot in manifest["shots"]:
+            actor = shot["cast"][0]
+            actions = shot["actors"][actor]["actions"]
+            self.assertEqual(actions, [{"clip": "keyframed", "source": "greet",
+                                        "start": 0, "end": 1.2}])
+            signatures.add((actions[0]["clip"], actions[0]["source"]))
+            image = render_frame(manifest, shot["id"], .6, size=(320, 180))
+            self.assertEqual(image.size, (320, 180))
+        self.assertEqual(signatures, {("keyframed", "greet")})
+
     def test_foot_lock_checks_actual_solved_ankle_not_just_targets(self):
         for scale in (.45, .6, .85):
             placement = {"position": [10, 420], "scale": scale, "foot_lock": True,
