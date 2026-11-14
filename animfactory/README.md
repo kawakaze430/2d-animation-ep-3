@@ -216,6 +216,59 @@ auto-retargeting, automatic prop passing, or full production acting.
 
     python -m unittest discover -s tests -p 'test_state_machines.py' -v
 
+## Optional providers — offline first (first adapter milestone)
+
+The core editor, rig import, reusable motion library and Pillow/FFmpeg render
+NEVER need an AI provider, API token, paid model, GPU or network call.
+Existing Kokoro/Rhubarb and Actions workflows remain separate and untouched.
+
+animfactory.providers exposes a typed provider registry:
+
+    from animfactory.providers import ProviderRegistry, OfflineThresholdFixture
+    registry = ProviderRegistry()
+    registry.register(OfflineThresholdFixture())
+    # Registering is inert; enabling is an explicit owner-controlled action:
+    registry.enable("offline_fixture", approved=True)
+    prepared = registry.prepare("offline_fixture", original_png_bytes)
+    print(prepared.provenance())
+    registry.disable("offline_fixture")
+
+The fixture removes near-white pixels with deterministic Pillow operations.
+It is NOT sophisticated segmentation, automatic skeletal rigging or
+reconstruction of missing anatomy. Inputs are bounded PNG/JPEG byte arrays,
+outputs are strictly validated transparent PNG. Persist them through
+import_prepared(project, prepared, asset_id, license_label="original-user-art")
+to reuse existing immutable artifact checksums and provenance.
+
+RembgPreloadedSession is an OPTIONAL rembg SDK integration boundary using
+the documented remove(input, session=existing_session) API. It requires
+an explicit existing local session, a supported named local model,
+a pinned SHA-256 digest and reviewed model license. It does not create
+sessions, download model weights or bundle/rent an inference engine. CI
+uses a fake remove function and a dummy session only; genuine rembg
+model inference and quality have NOT been executed or measured.
+
+The package license of rembg does not guarantee that each downloadable model
+weight or imported user image has the same commercial rights. An owner/artist
+must review that precise model and image source before any use.
+
+All adapters start disabled. Network/billable descriptors additionally
+require per-operation explicit approval. The current elapsed-time check
+detects time-budget overruns AFTER a provider call returns; it cannot
+forcibly stop a blocking SDK. Real hosted inference needs isolated killable
+workers, resource quotas, secret/network permissions and operator review
+before enabling third-party providers. This registry will never
+auto-load arbitrary modules or execute untrusted Python plugin code.
+
+Offline test:
+
+    python -m unittest discover -s tests -p 'test_providers.py' -v
+
+Issue #9 retains the remaining work: genuine locally pinned rembg model
+licensing and testing, killable timeouts, more robust adapter lifecycle,
+health checks, optional SAM2/ComfyUI/Rigby2D and audited cost boundaries.
+No GPU, remote AI, billable API or public deployment is activated.
+
 ## Browser editor — local, no desktop installation
 
     python -m animfactory studio build/new-film --port 8190
