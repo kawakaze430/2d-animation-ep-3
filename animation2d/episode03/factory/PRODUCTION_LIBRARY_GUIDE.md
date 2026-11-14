@@ -96,7 +96,7 @@ Mouth movement is intentionally independent of the reusable talk-body gesture: .
 Use original unit tests and new rig/foot checks:
 
     python -m unittest discover -s tests -p 'test_*.py' -v
-    python -m unittest tests.test_motion_clips -v
+    python -m unittest discover -s tests -p 'test_motion_clips.py' -v
 
 quality.joint_connections(pose) checks anatomical joins; quality.foot_sliding(actor,start,end,side) evaluates ACTUAL post-IK ankle movement during planted phases. Modern scene foot_lock reserves a small knee flexion to avoid nominally stationary foot targets being moved by unreachable IK. Legacy old singular action shots are unaffected by default.
 
