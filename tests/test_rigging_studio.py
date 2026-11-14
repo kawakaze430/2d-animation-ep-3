@@ -27,7 +27,7 @@ from animfactory.studio import handler_for, revision
 
 
 def tiny_layer(bone, *, opaque=False):
-    color = (120 + hash(bone)%50, 75, 145, 255)
+    color = (120 + hashlib.sha256(bone.encode()).digest()[0]%50, 75, 145, 255)
     im = Image.new("RGBA", (36, 52), (0,0,0,255) if opaque else (0,0,0,0))
     d = ImageDraw.Draw(im)
     d.rounded_rectangle((6,5,30,47),radius=6,fill=color)
