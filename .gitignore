@@ -2,6 +2,9 @@ __pycache__/
 *.py[cod]
 .venv/
 .cache/
-Episode_03/animation/output/
-*.blend1
-*.blend2
+/build/
+animation2d/project/output/
+animation2d/project/models/
+animation2d/project/tools/
+animation2d/project/audio/scenes/
+animation2d/project/audio/lines/

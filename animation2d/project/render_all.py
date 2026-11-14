@@ -21,7 +21,8 @@ def main():
  audio=ROOT/'audio/narration.wav'
  if not audio.exists():audio=audio.with_suffix('.flac')
  audio=master(audio,out/'audio/narration_master.flac')
- result=out/('Everyday_English_2_Minute_Preview.mp4' if N==12 else 'Everyday_English_10_Minutes.mp4')
+ filename=('Episode_02_Breakfast_and_Garden_120s.mp4' if 'Episode 02' in spec.get('title','') else 'Everyday_English_2_Minute_Preview.mp4' if N==12 else 'Everyday_English_10_Minutes.mp4')
+ result=out/filename
  subprocess.run(['ffmpeg','-hide_banner','-loglevel','warning','-y','-f','concat','-safe','0','-i',str(listing),'-i',str(audio),'-i',str(ROOT/'captions.srt'),'-map','0:v:0','-map','1:a:0','-map','2:s:0','-c:v','copy','-c:a','aac','-b:a','256k','-c:s','mov_text','-metadata:s:s:0','language=eng','-metadata','title=Morning English — Learn by Doing','-metadata','comment=Original 2D morning-routine animation, generated narration and captions.','-t',str(spec['duration']),'-movflags','+faststart',str(result)],check=True)
  print(result,flush=True)
 if __name__=='__main__':main()

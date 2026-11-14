@@ -1,20 +1,19 @@
 """Build Episode 02 from the original project without replacing its art, rig or renderer.
 
 Usage:
-    python episode2/prepare_episode.py
+    python animation2d/run.py prepare --episode 02
 
-Run from a checkout containing the extracted 'Everyday_English_Project' folder.
-This creates build/episode02/Everyday_English_Project/.
+This creates build/episode02/project without changing the source project.
 """
 from pathlib import Path
 import json
 import re
 import shutil
 
-ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "Everyday_English_Project"
+ROOT = Path(__file__).resolve().parents[2]
+SOURCE = ROOT / "animation2d" / "project"
 DEST = ROOT / "build" / "episode02"
-PROJECT = DEST / "Everyday_English_Project"
+PROJECT = DEST / "project"
 
 # Original scenes/backgrounds/artwork remain unchanged. Each item is a new
 # 10-second vignette, with 3 short, clear first-person English sentences.
@@ -148,14 +147,18 @@ def patch_renderer(path: Path) -> None:
     path.write_text(source)
 
 
-def main() -> None:
-    if not SOURCE.is_dir():
-        raise FileNotFoundError(SOURCE)
-    if DEST.exists():
-        shutil.rmtree(DEST)
-    DEST.mkdir(parents=True)
-    shutil.copytree(SOURCE, PROJECT, ignore=shutil.ignore_patterns('__pycache__', 'segments'))
-    if not PROJECT.is_dir():
+def main(*, source=SOURCE, project=PROJECT, refresh=False) -> None:
+    source, project = Path(source), Path(project)
+    dest = project.parent
+    if not source.is_dir():
+        raise FileNotFoundError(source)
+    if project.exists():
+        if not refresh:
+            raise FileExistsError(f"{project} exists; use --refresh only to replace generated build")
+        shutil.rmtree(project)
+    dest.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, project, ignore=shutil.ignore_patterns('__pycache__', 'output', 'models', 'tools'))
+    if not project.is_dir():
         raise RuntimeError("Expected original project folder missing")
     spec = {
         "title": "Morning English — Breakfast and Garden (Episode 02)",
@@ -172,22 +175,22 @@ def main() -> None:
                 "scene": i, "start": 10*i+10*j/3, "end": 10*i+10*(j+1)/3,
                 "text": line, "action": action
             })
-    (PROJECT/"lesson.json").write_text(json.dumps(spec, indent=2))
-    (PROJECT/"Lesson_Script.txt").write_text("\n\n".join(
+    (project/"lesson.json").write_text(json.dumps(spec, indent=2))
+    (project/"Lesson_Script.txt").write_text("\n\n".join(
         f"{i*10:03}–{i*10+10:03}s | {s[0]}\n" + "\n".join(s[3])
         for i,s in enumerate(SHOTS)
     ))
-    patch_renderer(PROJECT/"action_render.py")
+    patch_renderer(project/"action_render.py")
     # Prevent old audio leaking into Episode 02: make_voice.py must regenerate
     # narration, Rhubarb mouth cues, dialogue, timings and caption file.
     for name in ("narration.flac", "narration.wav", "narration_raw.wav",
                  "timings.json", "mouth_cues.json", "dialogue.txt"):
-        (PROJECT/"audio"/name).unlink(missing_ok=True)
-    (PROJECT/"captions.srt").unlink(missing_ok=True)
-    (PROJECT/"output").mkdir(exist_ok=True)
-    compile((PROJECT/"action_render.py").read_text(), str(PROJECT/"action_render.py"), "exec")
+        (project/"audio"/name).unlink(missing_ok=True)
+    (project/"captions.srt").unlink(missing_ok=True)
+    (project/"output").mkdir(exist_ok=True)
+    compile((project/"action_render.py").read_text(), str(project/"action_render.py"), "exec")
     assert len(spec["scenes"])==12 and len(spec["sentences"])==36
-    print(f"Prepared {PROJECT}: 12 scenes, 36 lines, same original art and character", flush=True)
+    print(f"Prepared {project}: 12 scenes, 36 lines, same original art and character", flush=True)
 
 
 if __name__ == "__main__":

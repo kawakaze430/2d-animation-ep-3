@@ -1,0 +1,214 @@
+name: Render 2D animation
+
+on:
+  workflow_dispatch:
+    inputs:
+      episode:
+        description: 'Project to render (Episode 03 production is not available yet)'
+        type: choice
+        options: ['original', '02']
+        default: original
+      voice:
+        description: 'Included audio is available only for the original project'
+        type: choice
+        options: ['included', 'kokoro']
+        default: included
+      scope:
+        description: 'Render a 15-second pipeline preview or the complete existing lesson'
+        type: choice
+        options: ['preview15', 'full']
+        default: preview15
+      workers:
+        description: 'Parallel render / voice workers'
+        type: choice
+        options: ['1', '2']
+        default: '2'
+      speed:
+        description: 'Preferred Kokoro speed, 0.5 to 1.3; ignored for included audio'
+        type: number
+        default: 0.85
+  workflow_call:
+    inputs:
+      episode:
+        type: string
+        default: original
+      voice:
+        type: string
+        default: included
+      scope:
+        type: string
+        default: preview15
+      workers:
+        type: string
+        default: '2'
+      speed:
+        type: number
+        default: 0.85
+
+permissions:
+  contents: read
+
+concurrency:
+  group: render-2d-${{ github.ref }}-${{ inputs.episode }}-${{ inputs.voice }}-${{ inputs.scope }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    name: Render ${{ inputs.episode }} / ${{ inputs.voice }} / ${{ inputs.scope }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      EPISODE: ${{ inputs.episode }}
+      VOICE: ${{ inputs.voice }}
+      RENDER_SCOPE: ${{ inputs.scope }}
+      WORKERS: ${{ inputs.workers }}
+      VOICE_SPEED: ${{ inputs.speed }}
+      PYTHONDONTWRITEBYTECODE: '1'
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - name: Check out selected source revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Validate requested project and audio combination
+        shell: bash
+        run: |
+          mkdir -p build/logs build/artifacts
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          selected = {key: os.environ[key] for key in ('EPISODE','VOICE','RENDER_SCOPE','WORKERS','VOICE_SPEED')}
+          Path('build/logs/selection.json').write_text(json.dumps(selected, indent=2) + '\n')
+          if selected['EPISODE'] not in ('original', '02') or selected['VOICE'] not in ('included', 'kokoro'):
+              raise SystemExit('Unsupported project or voice mode')
+          if selected['RENDER_SCOPE'] not in ('preview15', 'full'):
+              raise SystemExit('Choose preview15 or full render scope')
+          if selected['EPISODE'] == '02' and selected['VOICE'] == 'included':
+              raise SystemExit('Episode 02 has different dialogue and requires voice=kokoro; original narration cannot be reused')
+          if selected['WORKERS'] not in ('1', '2') or not 0.5 <= float(selected['VOICE_SPEED']) <= 1.3:
+              raise SystemExit('Choose 1 or 2 workers and a voice speed between 0.5 and 1.3')
+          PY
+      - name: Set up Python 3.11
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: animation2d/project/requirements.txt
+      - name: Install rendering tools
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          python -m pip install -r animation2d/project/requirements.txt 2>&1 | tee build/logs/install-render.log
+      - name: Validate source before rendering
+        shell: bash
+        run: |
+          python Episode_03/check.py 2>&1 | tee build/logs/episode03-check.log
+          python Episode_03/sync.py --check 2>&1 | tee build/logs/episode03-sync.log
+          python -m unittest discover -s tests -p 'test_*.py' -v 2>&1 | tee build/logs/regressions.log
+          (cd animation2d/project && python -m unittest discover -s . -p 'test_*.py' -v) 2>&1 | tee build/logs/renderer-tests.log
+      - name: Prepare disposable project copy
+        shell: bash
+        run: python animation2d/run.py prepare --episode "$EPISODE" 2>&1 | tee build/logs/prepare.log
+      - name: Cache official model downloads
+        if: inputs.voice == 'kokoro'
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-cpu-af-heart-${{ runner.os }}-${{ hashFiles('tools/setup_voice.py') }}
+      - name: Install optional Kokoro CPU speech dependencies
+        if: inputs.voice == 'kokoro'
+        shell: bash
+        run: |
+          sudo apt-get install --no-install-recommends -y espeak-ng libespeak-ng1
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu 2>&1 | tee build/logs/install-torch.log
+          python -m pip install 'kokoro==0.9.4' 'transformers<5' soundfile espeakng-loader phonemizer 'huggingface_hub>=0.25,<1' 2>&1 | tee build/logs/install-kokoro.log
+          python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl 2>&1 | tee build/logs/install-spacy-model.log
+      - name: Download and verify official speech model and Rhubarb
+        id: voice_tools
+        if: inputs.voice == 'kokoro'
+        shell: bash
+        run: |
+          python tools/setup_voice.py --output build/voice --github-output "$GITHUB_OUTPUT" 2>&1 | tee build/logs/voice-downloads.log
+      - name: Generate fresh Kokoro narration and Rhubarb mouth cues
+        if: inputs.voice == 'kokoro'
+        shell: bash
+        env:
+          MODEL_DIR: ${{ steps.voice_tools.outputs.model_dir }}
+          RHUBARB: ${{ steps.voice_tools.outputs.rhubarb }}
+        run: |
+          "$RHUBARB" --version 2>&1 | tee build/logs/rhubarb-version.log
+          python animation2d/run.py voice --episode "$EPISODE" --model-dir "$MODEL_DIR" --rhubarb "$RHUBARB" --workers "$WORKERS" --speed "$VOICE_SPEED" 2>&1 | tee build/logs/voice.log
+      - name: Render preview frames and selected video
+        shell: bash
+        run: |
+          python animation2d/run.py preview --episode "$EPISODE" 2>&1 | tee build/logs/preview.log
+          if [ "$RENDER_SCOPE" = preview15 ]; then
+            python animation2d/run.py smoke --episode "$EPISODE" --seconds 15 2>&1 | tee build/logs/render.log
+          else
+            python animation2d/run.py render --episode "$EPISODE" --workers "$WORKERS" 2>&1 | tee build/logs/render.log
+          fi
+      - name: Decode and verify final video, then package editable project
+        shell: bash
+        run: |
+          python - <<'PY' 2>&1 | tee build/logs/package.log
+          import importlib.util, json, os, shutil, zipfile
+          from pathlib import Path
+          spec = importlib.util.spec_from_file_location('render_pipeline', 'animation2d/run.py')
+          pipeline = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(pipeline)
+          episode = os.environ['EPISODE']
+          project = pipeline.project_path(episode)
+          name = 'Everyday_English_2_Minute_Preview.mp4' if episode == 'original' else 'Episode_02_Breakfast_and_Garden_120s.mp4'
+          seconds = 15 if os.environ['RENDER_SCOPE'] == 'preview15' else 120
+          if seconds == 15:
+              name = 'pipeline_smoke_15s.mp4'
+          video = project / 'output' / name
+          report = pipeline.inspect_video(video, seconds)
+          report.update(episode=episode, voice=os.environ['VOICE'], scope=os.environ['RENDER_SCOPE'], source_commit=os.environ['GITHUB_SHA'])
+          artifacts = Path('build/artifacts')
+          (artifacts / 'validation.json').write_text(json.dumps(report, indent=2) + '\n')
+          published_name = f'2D_{episode}_Pipeline_Preview_15s.mp4' if seconds == 15 else name
+          shutil.copy2(video, artifacts / published_name)
+          archive_path = artifacts / f'2D_{episode}_Editable_Project.zip'
+          excluded = {'__pycache__', 'models', 'tools', 'output'}
+          with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=5) as archive:
+              for path in sorted(project.rglob('*')):
+                  relative = path.relative_to(project)
+                  if not path.is_file() or set(relative.parts) & excluded:
+                      continue
+                  if relative.parts[:2] in (('audio','lines'), ('audio','scenes')):
+                      continue
+                  archive.write(path, Path('project') / relative)
+              archive.writestr('project/RENDER_VALIDATION.json', json.dumps(report, indent=2) + '\n')
+              provenance = Path('build/voice/verified_downloads.json')
+              if provenance.is_file():
+                  archive.write(provenance, 'project/VOICE_TOOL_PROVENANCE.json')
+          with zipfile.ZipFile(archive_path) as archive:
+              if archive.testzip() is not None:
+                  raise RuntimeError('Editable project ZIP integrity check failed')
+          print(json.dumps(report, indent=2))
+          print('Packaged', archive_path)
+          PY
+      - name: Collect tool diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p build/logs
+          python3 --version > build/logs/python-version.txt 2>&1
+          if command -v ffmpeg >/dev/null; then ffmpeg -version > build/logs/ffmpeg-version.txt 2>&1; fi
+          git status --short > build/logs/working-tree.txt
+      - name: Upload video, editable source, validation and failure diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: 2D-${{ inputs.episode }}-${{ inputs.voice }}-${{ inputs.scope }}-${{ github.run_id }}
+          path: |
+            build/artifacts/
+            build/logs/
+            build/voice/verified_downloads.json
+            build/*/prepared.json
+            build/*/project/output/audio/*.json
+          if-no-files-found: error
+          retention-days: 14

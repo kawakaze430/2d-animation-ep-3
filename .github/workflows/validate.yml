@@ -1,0 +1,50 @@
+name: Validate contributions
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  story-and-animation:
+    name: Story and animation / Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.11', '3.12']
+    env:
+      PYTHONDONTWRITEBYTECODE: '1'
+    steps:
+      - name: Check out contribution
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: animation2d/project/requirements.txt
+      - name: Install FFmpeg and Python animation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          python -m pip install -r animation2d/project/requirements.txt
+      - name: Check Episode 03 story, continuity, assets and links
+        run: python Episode_03/check.py
+      - name: Reject stale generated handoff
+        run: python Episode_03/sync.py --check
+      - name: Test validators and real 2D frames, motion, media encoding
+        run: python -m unittest discover -s tests -p 'test_*.py' -v
+      - name: Test renderer geometry, hand contact and cache
+        working-directory: animation2d/project
+        run: python -m unittest discover -s . -p 'test_*.py' -v
+      - name: Ensure checks did not rewrite tracked files
+        run: git diff --exit-code

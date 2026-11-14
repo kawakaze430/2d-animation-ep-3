@@ -21,6 +21,9 @@ class Episode03ValidationTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.episode = self.root / 'Episode_03'
         shutil.copytree(ROOT / 'Episode_03', self.episode, ignore=shutil.ignore_patterns('__pycache__'))
+        # The episode's production handoff links to the real shared pipeline guide.
+        (self.root / 'animation2d').mkdir()
+        shutil.copy2(ROOT / 'animation2d/README.md', self.root / 'animation2d/README.md')
 
     def mutate_text(self, relative, old, new):
         path = self.episode / relative
