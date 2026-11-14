@@ -120,6 +120,46 @@ bone hierarchy editor. This milestone deliberately reuses native browser
 Canvas for source-pivot edits rather than introducing a new dependency or CDN.
 See issue #8 for PSD/SVG and deeper bone relationships.
 
+## Author reusable motion keyframes visually (project motion registry)
+
+Open the existing browser studio and use **Reusable motion keyframe editor**
+beneath the scene timeline. Select a named motion in the motion library or
+choose **New clip** to create a permanent motion source independently of any
+character. **Duplicate** copies a source to a new named clip without changing
+its original.
+
+Supported generic local rig channels: root_x, root_y, left_x, left_y, right_x,
+right_y, lean, head_turn, sitting and blink. A motion channel has normalized
+times (0 to 1) and key values. Drag a graph handle or enter exact time/value;
+add/remove keyframes or entire channels. Select **smooth, linear or step**
+interpolation, set clip duration and optional looping. Looping requires matching
+first and last values at normalized times 0 and 1. Click **Save motion clip**
+to atomically validate/save that source in the same project.json consumed by the
+Python engine.
+
+Apply the saved named clip in the existing timeline to two different compatible
+imported character rigs. Per-actor start/end frames, speed, placement and scale
+remain independent; both actors read the SAME source track, not copied
+character-specific Python scripts. The curve canvas is an **editor view of
+stored source values**, not a second renderer; authoritative actual visuals
+remain from the Pillow/IK frame preview/export path.
+
+The existing EditSession enforces recognized numeric channels, finite values,
+strictly increasing key times, allowed interpolation and loop continuity
+before persisting. Any invalid edit leaves the saved file and undo history
+untouched. After a successful save, the common motion clip is shared by every
+actor referencing its ID. Undo/Redo covers edits to the motion library.
+
+Reproducible tests:
+
+    python -m unittest discover -s tests -p 'test_motion_authoring.py' -v
+    node --check animfactory/web/curves.js
+
+This is not yet an advanced animation graph: per-bone blend masks,
+automatic retarget maps for substantially different skeletons, root-weight
+physics and multi-state transitions remain in issue #7. Clip curves do not
+claim production-quality pouring, stirring or full emotional performances.
+
 ## Browser editor — local, no desktop installation
 
     python -m animfactory studio build/new-film --port 8190
