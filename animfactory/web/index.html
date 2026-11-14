@@ -29,6 +29,10 @@
         <div id="actors" class="list"></div>
       </section>
       <section>
+        <button id="openRigStudio" class="primary" type="button">Rig studio · Import &amp; edit</button>
+        <p class="muted tiny">15 transparent PNG parts, pivots, anatomical anchors and IK preview.</p>
+      </section>
+      <section>
         <h3>Motion library</h3>
         <input id="searchMotions" type="search" placeholder="Search motion presets" aria-label="Search motion library">
         <div id="motions" class="list scrollbox"></div>
@@ -83,5 +87,78 @@
       </section>
     </aside>
   </div>
+  <dialog id="rigDialog" aria-labelledby="rigTitle">
+    <header class="rig-head">
+      <div><h2 id="rigTitle">Character rig studio</h2>
+        <p class="muted small">Original PNG layers stay unchanged. Pivot edits create immutable rig revisions using the existing IK renderer.</p></div>
+      <button id="rigClose" type="button" aria-label="Close rig editor">✕ Close</button>
+    </header>
+    <div class="rig-grid">
+      <section class="rig-import">
+        <h3>1 · Import transparent body-part artwork</h3>
+        <label>Character ID <input id="rigImportName" placeholder="JUNO" maxlength="32" pattern="[A-Za-z][A-Za-z0-9_]*"></label>
+        <label>Source / owner <input id="rigImportSource" value="user-import" maxlength="200"></label>
+        <label>Art rights / license <input id="rigImportLicense" value="unspecified" maxlength="200"></label>
+        <div id="rigDropZone" tabindex="0" role="button" aria-label="Choose or drop 15 transparent PNG layers">
+          Drag 15 separate PNG body parts here, or
+          <label for="rigFiles">select PNG files</label>
+          <input type="file" id="rigFiles" accept="image/png,.png" multiple>
+        </div>
+        <p class="muted tiny">Use filenames such as head.png, torso.png, pelvis.png, upper_arm_left.png, hand_right.png, shin_left.png. All 15 roles are mandatory; missing art cannot be inferred from one photo.</p>
+        <div id="rigImportList" class="rig-import-list" aria-live="polite">No PNG layers selected.</div>
+        <button class="primary" id="rigImportSubmit" disabled>Import verified 15-part rig</button>
+      </section>
+      <section class="rig-editor">
+        <h3>2 · Visual rig editing</h3>
+        <div class="rig-row">
+          <label>Character <select id="rigCharacter" aria-label="Imported character"></select></label>
+          <label>Part <select id="rigBone" aria-label="Anatomical bone"></select></label>
+        </div>
+        <div class="rig-canvas-grid">
+          <div><p class="muted tiny">Authoritative Pillow rig and IK preview</p>
+            <img id="rigFullImage" alt="Selected complete rig rendered by the Python engine" class="rig-full">
+            <label class="small"><input type="checkbox" id="rigMovement"> Preview right-hand reach</label>
+          </div>
+          <div><p class="muted tiny">Source part: drag red pivot or cyan bone end</p>
+            <canvas id="rigPartCanvas" width="380" height="330" aria-label="Drag pivot and bone endpoint on selected PNG"></canvas>
+            <p id="rigDimensions" class="muted tiny"></p>
+          </div>
+        </div>
+        <div class="rig-row rig-controls">
+          <label>Pivot X <input id="rigPivotX" type="number" step="0.5"></label>
+          <label>Pivot Y <input id="rigPivotY" type="number" step="0.5"></label>
+          <label>Bone end X <input id="rigEndX" type="number" step="0.5"></label>
+          <label>Bone end Y <input id="rigEndY" type="number" step="0.5"></label>
+          <label>Draw depth <input id="rigDepth" type="number" step="1"></label>
+          <label class="small">Mirror sprite <input id="rigMirror" type="checkbox"></label>
+        </div>
+        <button class="primary" id="rigSavePart" type="button">Save selected part geometry</button>
+        <div class="rig-row">
+          <label>Anatomical anchor <select id="rigAnchor">
+            <option value="neck">Neck</option><option value="shoulder_left">Left shoulder</option>
+            <option value="shoulder_right">Right shoulder</option>
+            <option value="hip_left">Left hip</option><option value="hip_right">Right hip</option>
+          </select></label>
+          <label>Anchor X <input id="rigAnchorX" type="number" step="1"></label>
+          <label>Anchor Y <input id="rigAnchorY" type="number" step="1"></label>
+          <button id="rigSaveAnchor" type="button">Save joint anchor</button>
+        </div>
+        <div class="rig-row">
+          <label>Bone length <select id="rigLength">
+            <option value="upper_arm">Upper arm</option><option value="forearm">Forearm</option>
+            <option value="thigh">Thigh</option><option value="shin">Shin</option>
+          </select></label>
+          <label>Length units <input id="rigLengthValue" type="number" min="5" max="2000" step="1"></label>
+          <button id="rigSaveLength" type="button">Save limb length</button>
+        </div>
+        <div class="rig-row">
+          <label>Saved revision <select id="rigVersions" aria-label="Immutable rig versions"></select></label>
+          <button id="rigRestore" type="button">Restore chosen version</button>
+        </div>
+        <div id="rigWarnings" class="muted small" role="status"></div>
+        <p id="rigStatus" class="muted small" role="status"></p>
+      </section>
+    </div>
+  </dialog>
 </body>
 </html>
