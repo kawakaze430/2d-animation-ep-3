@@ -65,7 +65,7 @@ def _action(source, *, allow_clip=True):
 
 
 def validate_graph(source):
-    if (not isinstance(source,dict) or source.get("version") != 1 or
+    if (not isinstance(source,dict) or (type(source.get("version")) is not int or source["version"] != 1) or
         set(source) - {"version","states","allowed_transitions"}):
         _reject("State graph must use version 1 and states")
     states=source.get("states")
