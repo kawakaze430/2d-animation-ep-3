@@ -49,3 +49,21 @@ The Pygame prototype deliberately shares Pillow camera cropping and vector-prop 
 ## Source files checked
 
 Episode03: actions.py, engine.py, kinematics.py, scene_factory.py, state.py, factory_render.py, preview.py, voice.py, factory/scenes/SHOT_001.json, RIG_FORMAT.md, tests/test_episode03_engine.py. New work: motion_clips.py, camera_clips.py, quality.py, factory/clip_library.json, tests/test_motion_clips.py, benchmark/pygame/ and .github/workflows/pygame-benchmark.yml.
+
+
+## Measured 15-second SHOT_001 schematic diagnostic (verified, no production claims)
+
+GitHub Actions [successful run 43645594305](https://github.com/kawakaze430/2d-animation-ep-3/actions/runs/43645594305), commit f28fd664, same GitHub-hosted Ubuntu runner. Exact original SHOT_001 scene, kitchen reference image, 1920x1080, 24fps, 360 frames, identical silent test audio, subtitles and FFmpeg parameters; **three schematic blocking actors, NOT the missing production cutout rigs or approved performed voices**.
+
+| Measured quantity | Existing Pillow | Pygame-ce 2.5.8 |
+| --- | ---: | ---: |
+| Drawing frames: wall seconds | 75.343 | 73.405 |
+| Renderer + FFmpeg: wall seconds | 78.541 | 75.774 |
+| Peak RSS of Python process, KiB | 94,792 | 124,724 |
+| Exported full 15s videos | Yes | Yes |
+| Matched input resolution/fps/360 frames | Yes | Yes |
+| Artist authoring hours and creative sign-off | Not measured | Not measured |
+
+GitHub workflow began at 2026-11-14T21:58:28Z and completed at 2026-11-14T22:01:47Z: **199 seconds inclusive of setup, dependencies, both renderers, comparison and artifact upload.** This is wall-clock CI elapsed time, not per-backend renderer time. Pygame-ce drew the frames about 2.6% faster but needed more Python-process memory. The comparison detected nonzero image differences (about 0.39–0.41 / 255 average RGB error across five whole frames); whole-frame average error is dominated by the unchanged kitchen background and is **not a creative character acting metric**. The benchmark Pygame backend still delegates camera crops to Pillow.
+
+**Conclusion:** there is no demonstrated material total-production benefit. Keep Pillow/FFmpeg. The real-art production A/B remains blocked by approved character rig/face art and audio.
