@@ -100,6 +100,26 @@ class ReusableFactoryTests(unittest.TestCase):
         self.assertEqual(len(base["shots"]), 80)
         self.assertEqual(len(production_readiness(compiled, "SHOT_001")), 3)
 
+    def test_named_prop_targets_reuse_real_world_coordinates(self):
+        # Named object references drive wrist intent rather than being ignored metadata.
+        scene = compile_scene(SOURCE, SHOT)["shots"][0]
+        props = {p["id"]: p for p in scene["props"]}
+        maya = scene["actors"]["MAYA"]
+        nina = scene["actors"]["NINA"]
+        self.assertEqual(maya["actions"][0]["object"], "recipe_card")
+        self.assertEqual(nina["actions"][0]["object"], "blue_bowl")
+        target_m = ActionMixer(maya, 15, objects=props).sample(1.5).hand_targets["right"][0]
+        target_n = ActionMixer(nina, 15, objects=props).sample(2.0).hand_targets["left"][0]
+        np.testing.assert_allclose(target_m, props["recipe_card"]["position"])
+        np.testing.assert_allclose(target_n, props["blue_bowl"]["position"])
+        for actor_name, hand in (("MAYA", "right"), ("NINA", "left")):
+            actor = Actor(actor_name, placement=scene["actors"][actor_name], objects=props)
+            self.assertTrue(np.isfinite(actor.solved_hand(2, hand).position).all())
+        broken = json.loads(SHOT.read_text())
+        broken["actors"]["MAYA"]["actions"][0]["object"] = "not_in_this_scene"
+        with self.assertRaisesRegex(ValueError, "Unknown action object"):
+            compile_scene(SOURCE, broken)
+
     def test_invalid_object_binding_rejects_wrong_cast_and_teleport(self):
         config = json.loads(SHOT.read_text())
         for p in config["props"]:
