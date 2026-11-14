@@ -136,10 +136,13 @@ def render(version: str, audio_dir: Path, output: Path, rigby_meta: Path | None)
                "-frames:v", str(expected), "-movflags", "+faststart",
                "-metadata", "title=Episode 03 SHOT_001 benchmark", str(mp4)]
     encode_at = time.perf_counter()
-    encode_cpu_at = time.process_time()
+    child_before = resource.getrusage(resource.RUSAGE_CHILDREN)
     subprocess.run(command, check=True)
+    child_after = resource.getrusage(resource.RUSAGE_CHILDREN)
     encode_seconds = time.perf_counter() - encode_at
-    encode_cpu_seconds = time.process_time() - encode_cpu_at
+    ffmpeg_user_seconds = child_after.ru_utime - child_before.ru_utime
+    ffmpeg_system_seconds = child_after.ru_stime - child_before.ru_stime
+    ffmpeg_rss_kb = child_after.ru_maxrss
     validation = inspect(mp4, DURATION, FPS, SIZE)
 
     report = {
@@ -155,7 +158,9 @@ def render(version: str, audio_dir: Path, output: Path, rigby_meta: Path | None)
         "frame_render_seconds": render_seconds,
         "frame_render_cpu_seconds_python_process": cpu_seconds,
         "encode_seconds": encode_seconds,
-        "encode_cpu_seconds_parent_only": encode_cpu_seconds,
+        "encode_cpu_user_seconds_ffmpeg": ffmpeg_user_seconds,
+        "encode_cpu_system_seconds_ffmpeg": ffmpeg_system_seconds,
+        "ffmpeg_peak_rss_kb": ffmpeg_rss_kb,
         "max_python_process_rss_kb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss,
         "mp4_sha256": sha256(mp4),
         "mp4_bytes": mp4.stat().st_size,
