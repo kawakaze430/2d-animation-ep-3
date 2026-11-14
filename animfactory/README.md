@@ -160,6 +160,62 @@ automatic retarget maps for substantially different skeletons, root-weight
 physics and multi-state transitions remain in issue #7. Clip curves do not
 claim production-quality pouring, stirring or full emotional performances.
 
+## Deterministic reusable state graphs (library v1)
+
+Each project contains a named state graph registry in motion_library.machines,
+independent of specific actors or episodes. New projects own the basic_interaction
+preset, which defines reusable idle, walk, reach, hold, release and speaking states.
+It is an intentional action SEQUENCER above the existing ActionMixer and
+two-bone IK, not a competing animation solver.
+
+Define an actor-specific frame schedule as ordinary validated JSON, for example:
+
+    {
+      "source": "basic_interaction",
+      "steps": [
+        {"at_frame": 0, "state": "idle"},
+        {"at_frame": 8, "state": "walk",
+         "params": {"target": [400, 250]}},
+        {"at_frame": 24, "state": "reach",
+         "params": {"target": [450, 200]}, "blend_frames": 2},
+        {"at_frame": 30, "state": "speaking", "mode": "overlay",
+         "duration_frames": 12},
+        {"at_frame": 42, "state": "hold",
+         "params": {"target": [450, 200]}},
+        {"at_frame": 48, "state": "release",
+         "params": {"target": [460, 260]}}
+      ]
+    }
+
+**replace** steps end at the next replacement; **overlay** steps coexist
+with the current state for a bounded duration. Optional blend_frames uses the
+pre-existing ActionMixer envelope, not a new animation interpolation engine.
+Optional allowed_transitions in the named graph rejects illegal state paths.
+The first replacement starts at frame zero; events and frames are strictly
+bounded and monotone, and unknown clips or action parameters are rejected.
+
+Register a new graph and assign a schedule without authoring Python motion code:
+
+    python -m animfactory add-machine build/new-film custom path/to/graph.json
+    python -m animfactory set-machine build/new-film intro ACTOR1 path/to/schedule.json
+
+Both commands use the same strict project validation and save the results in
+project.json. Alternatively, use EditSession to add project-scoped graphs under
+motion_library/machines and attach a machine to an actor. The state graph
+instance is compiled to the SAME action clips as handwritten timeline
+entries, evaluated at absolute frame timestamps. Saved project data is
+portable and renderable offline.
+
+A graph can be applied to multiple compatible actors using different event
+target coordinates and different state timing, with ONE graph definition.
+State tests verify random-access seeking, sequential/reordered frame parity,
+animated transitions and invalid states/interruptions. Complex
+state transitions may still need artist-authoring and manual creative review;
+this basic state sequencer does not claim universal collision physics,
+auto-retargeting, automatic prop passing, or full production acting.
+
+    python -m unittest discover -s tests -p 'test_state_machines.py' -v
+
 ## Browser editor — local, no desktop installation
 
     python -m animfactory studio build/new-film --port 8190
