@@ -163,6 +163,8 @@ def validate_project(source):
             if not isinstance(actor, dict):
                 _fail(f"{sid}: actor entry must be object")
             actor_id = valid_id(actor.get("id"), f"{sid}.actor.id")
+            if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,31}", actor_id):
+                _fail(f"{sid}: actor ID must match existing renderer contract")
             if actor_id in seen_actors:
                 _fail(f"{sid}: duplicated actor {actor_id}")
             seen_actors.add(actor_id)
@@ -201,10 +203,80 @@ def validate_project(source):
                     point(action["target"], "action.target")
                 if action.get("hand", "right") not in ("left", "right"):
                     _fail("action hand must be left or right")
-        if not isinstance(scene.get("props", []), list):
+        props = scene.get("props", [])
+        if not isinstance(props, list):
             _fail(f"{sid}: props must be array")
-        if not isinstance(scene.get("dialogue", []), list):
+        prop_ids = set()
+        for prop in props:
+            if not isinstance(prop, dict) or set(prop) - {
+                "id", "position", "depth", "rotation", "size", "color",
+                "shape", "asset", "interaction"
+            }:
+                _fail(f"{sid}: prop must use recognized safe fields; raw file paths forbidden")
+            pid = valid_id(prop.get("id"), "prop ID")
+            if pid in prop_ids:
+                _fail(f"{sid}: duplicate prop ID")
+            prop_ids.add(pid)
+            point(prop.get("position"), f"{pid}.position")
+            number(prop.get("depth", 110), f"{pid}.depth")
+            number(prop.get("rotation", 0), f"{pid}.rotation", -360, 360)
+            if "asset" in prop:
+                if prop["asset"] not in assets or assets[prop["asset"]]["kind"] not in ("prop", "image"):
+                    _fail(f"{pid}: prop artwork must reference an imported image/prop asset")
+            elif ("size" not in prop or "color" not in prop):
+                _fail(f"{pid}: vector props require size and color")
+            if "size" in prop:
+                size = point(prop["size"], f"{pid}.size")
+                if min(size) <= 0 or max(size) > 8192:
+                    _fail(f"{pid}: invalid prop size")
+            if "shape" in prop and prop["shape"] not in ("rectangle", "ellipse"):
+                _fail(f"{pid}: unsupported vector shape")
+            if "color" in prop and (not isinstance(prop["color"], str)
+                                    or not re.fullmatch(r"#[0-9A-Fa-f]{6}", prop["color"])):
+                _fail(f"{pid}: color must be a six-digit hex code")
+            binding = prop.get("interaction")
+            if binding is not None:
+                if not isinstance(binding, dict) or set(binding) - {
+                    "actor", "hand", "attach_at", "release_at", "landing",
+                    "offset", "rotation", "rotate_with_hand", "follow_actor_scale",
+                    "contact_tolerance"
+                }:
+                    _fail(f"{pid}: invalid interaction")
+                if binding.get("actor") not in seen_actors or binding.get("hand", "right") not in ("left", "right"):
+                    _fail(f"{pid}: interaction references unknown hand/actor")
+                t0, t1 = binding.get("attach_at"), binding.get("release_at")
+                if (type(t0) not in (float,int) or type(t1) not in (float,int) or
+                    not math.isfinite(t0) or not math.isfinite(t1)
+                    or not 0 <= t0 < t1 <= length/fps):
+                    _fail(f"{pid}: interaction times outside scene duration")
+                point(binding.get("landing"), f"{pid}.landing")
+                if "offset" in binding:
+                    point(binding["offset"], f"{pid}.offset")
+                if "contact_tolerance" in binding:
+                    number(binding["contact_tolerance"], f"{pid}.contact_tolerance", 0, 10000)
+                for flag in ("rotate_with_hand", "follow_actor_scale"):
+                    if flag in binding and type(binding[flag]) is not bool:
+                        _fail(f"{pid}: {flag} must be boolean")
+        for actor in actors:
+            for action in actor["actions"]:
+                if "object" in action and action["object"] not in prop_ids:
+                    _fail(f"{sid}: action references missing prop ID")
+        dialogue = scene.get("dialogue", [])
+        if not isinstance(dialogue, list):
             _fail(f"{sid}: dialogue must be array")
+        previous_end = 0
+        for turn in dialogue:
+            if not isinstance(turn, dict) or set(turn) != {
+                "speaker", "text", "start_frame", "end_frame"
+            }:
+                _fail(f"{sid}: dialogue needs speaker/text/start_frame/end_frame")
+            if turn["speaker"] not in seen_actors or not isinstance(turn["text"], str) or not turn["text"].strip():
+                _fail(f"{sid}: dialogue speaker/text invalid")
+            start, end = turn["start_frame"], turn["end_frame"]
+            if (type(start) is not int or type(end) is not int or
+                    not previous_end <= start < end <= length):
+                _fail(f"{sid}: dialogue overlaps or exceeds scene")
+            previous_end = end
     return deepcopy(source)
 
 
