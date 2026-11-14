@@ -60,6 +60,9 @@ def fingerprint(manifest_path, mode="blocking", audio_dir=None, size=(1920, 1080
         Path(manifest_path), Path(__file__),
         REPO/"animation2d/episode03/engine.py",
         REPO/"animation2d/episode03/actions.py",
+        REPO/"animation2d/episode03/motion_clips.py",
+        REPO/"animation2d/episode03/factory/clip_library.json",
+        REPO/"animation2d/episode03/camera_clips.py",
         REPO/"animation2d/episode03/kinematics.py",
         REPO/"animation2d/episode03/render.py",
     ]
