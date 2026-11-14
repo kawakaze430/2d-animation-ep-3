@@ -36,7 +36,7 @@ function showMotions(){
   ];
   available.filter(item=>item.id.toLowerCase().includes(filter)).forEach(item=>{
     const key=item.kind+":"+item.id;
-    holder.append(button(item.id+" · "+item.kind,key===state.motion,()=>{state.motion=key;showMotions();}));
+    holder.append(button(item.id+" · "+item.kind,key===state.motion,()=>{state.motion=key;showMotions();window.dispatchEvent(new CustomEvent("animfactory:motion-picked",{detail:{kind:item.kind,id:item.id}}));}));
   });
   if(!holder.children.length)holder.textContent="No matching clips. Import a motion JSON.";
   el("addClip").disabled=!state.motion||!actor();
