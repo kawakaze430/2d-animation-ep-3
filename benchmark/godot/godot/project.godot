@@ -1,0 +1,15 @@
+; Godot 4.7.2 CLI Movie Writer benchmark; deliberately synthetic fixtures.
+config_version=5
+
+[application]
+config/name="Episode03 Renderer Proof (Synthetic Art)"
+run/main_scene="res://main.tscn"
+
+[display]
+window/size/viewport_width=960
+window/size/viewport_height=540
+window/stretch/mode="disabled"
+
+[rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
