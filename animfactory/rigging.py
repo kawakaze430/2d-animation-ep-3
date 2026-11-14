@@ -308,6 +308,7 @@ def sprite_bytes(project: Project, character, bone):
     if part is None:
         raise ValueError("Unknown bone")
     file = files[part["file"]]
-    if file.name not in asset["files"] or hash_file(file) != asset["files"][file.name]:
+    relative = file.relative_to(active.parent).as_posix()
+    if relative not in asset["files"] or hash_file(file) != asset["files"][relative]:
         raise ValueError("Artwork no longer matches imported checksum")
     return file.read_bytes()
