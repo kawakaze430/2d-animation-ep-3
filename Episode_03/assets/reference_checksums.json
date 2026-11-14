@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "baseline_commit": "4a9ec4f",
+  "provenance": "SHA-256 baseline of the preview JPGs present in this repository at initial commit 4a9ec4f. Episode_01 and full-resolution owner archive originals are not included; these hashes detect subsequent substitutions and do not certify archive identity or creator approval. Intentional identity changes require explicit review of this manifest and corresponding artwork.",
+  "sha256": {
+    "assets/characters/ADULTS_lineup.jpg": "0748b5c5f7d6058c3edce9bcfefb038da9914555d6663d362adbef8849abcd70",
+    "assets/characters/CHILDREN_lineup.jpg": "e9fa814bd1ed4b85a3b9925839606635deb1ed92eac0afa3de6015afda338051",
+    "assets/characters/DAN_portrait.jpg": "ab292320db7190ccff07d6109c0dce0ca650c3db81e49fd51954872e818d2331",
+    "assets/characters/DAN_sheet.jpg": "fe9b59f33c6c2e7197505b982fb620eda292a57c615e95318cdc353dcb2948d0",
+    "assets/characters/ELLA_portrait.jpg": "6cdaced49b8f4a4df4f5594dc03fc30b1f6e37d389ded5d6dba66d07875bcb69",
+    "assets/characters/ELLA_sheet.jpg": "2aa971eaf082703d51db6b384583a587a4db68976e031fb1669ecd264142882c",
+    "assets/characters/LEO_portrait.jpg": "297622dcf4517b535c9d2eef119db1791ae70e9b5fe504f537a179c403107998",
+    "assets/characters/LEO_sheet.jpg": "3ca9dc554c906bfdd42efd3cd32b9cb282dc290ba94f38dc1c7cca812026f9ff",
+    "assets/characters/MAX_portrait.jpg": "600af155d1d9e1b91391eeb24c99822356770092c69fa91bc8501b46907b533a",
+    "assets/characters/MAX_sheet.jpg": "43518e41a4ecd7546c8810faca70b1dfc8d5974600ba7158683c290c8fa3165b",
+    "assets/characters/MAYA_portrait.jpg": "2880ff4810950b899dc5a131c7056c7675c62462660002cb1318ac0ed2eec61a",
+    "assets/characters/MAYA_sheet.jpg": "0fe0228aadbebb194ada35362b76af988336659cddad7dc639c2ecd96de00a19",
+    "assets/characters/NINA_portrait.jpg": "53284a43417057a48036ef3f2d5393284ea9af264986a4ce18816ad4dfd488c6",
+    "assets/characters/NINA_sheet.jpg": "0f635c475ad4fc74b24720b439b0ccebc8fcac856093eaddbfc9cdb7f0aa2ae1",
+    "assets/environments/HOME_KITCHEN.jpg": "21b3438b5a2d009778983db85b9cce7570522533b3440a8d083b38420aa3732c",
+    "assets/environments/HOME_TABLE.jpg": "6393732295599267c178ab75ecf015ea329c8324601e31a008fc5dd0ada793b9"
+  }
+}

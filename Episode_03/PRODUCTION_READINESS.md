@@ -2,7 +2,7 @@
 
 **Current state:** story and visual preproduction draft for **80 × 15-second story shots = 20:00**, with 20 four-panel storyboard sheets illustrating all 80 concepts, five environment previews, 14 unchanged cast-preview JPGs and editable SVGs. The creator commissioned Episode 03 and requested a tested GitHub push. Creator visual acceptance, 80 individual motion first frames, performed voices, an animatic and video remain pending.
 
-The section names follow the [original guide mapping retained in Episode 01](../Episode_01/PRODUCTION_READINESS.md). These are production-guide sections, not the creator's Tasks 1–6. A documented plan or an illustrated study does not mean a motion, audio or launch phase has been executed. Optional creator-designed practice belongs after the story.
+The section names follow the original guide mapping from Episode 01 (that episode is not included in this standalone checkout). These are production-guide sections, not the creator's Tasks 1–6. A documented plan or an illustrated study does not mean a motion, audio or launch phase has been executed. Optional creator-designed practice belongs after the story.
 
 Browse the [storyboard gallery](STORYBOARD_GALLERY.md), [HTML gallery](assets/storyboards/index.html) and [shot index](STORYBOARD_INDEX.md). Read the [environment notes](assets/environments/GENERATION_NOTES.md) and [storyboard notes](assets/storyboards/GENERATION_NOTES.md) for actual inputs, generation sources, corrections and inspection limits.
 

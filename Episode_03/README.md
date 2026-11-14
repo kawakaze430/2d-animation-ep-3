@@ -43,12 +43,11 @@ The [storyboard generation notes](assets/storyboards/GENERATION_NOTES.md) record
 From the repository root:
 
 ```bash
-python Episode_01/check.py
-python Episode_02/check.py
-python Episode_02/sync.py --check
 python Episode_03/check.py
 python Episode_03/sync.py --check
 python -m unittest discover -s tests -v
 ```
+
+The standalone checkout does not include Episode 01, Episode 02 or their tests. Shared character/home previews are protected by [`assets/reference_checksums.json`](assets/reference_checksums.json), a SHA-256 baseline of the existing JPGs; it detects substitutions without claiming to certify missing archive originals. When Episode 01 originals are available, the checker also compares their bytes.
 
 For written-draft edits, change `STORY.md` first and run `python Episode_03/sync.py` to refresh prompts, provisional subtitles, the index and galleries. Review the diff and run the checks. Preserve later approved performance timings and production-frame records before changing that draft workflow. Validation can check source/image relationships; it cannot certify visual likeness, doneness in a rendered frame, actual performed timing or creator approval.

@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.venv/
+.cache/
+Episode_03/animation/output/
+*.blend1
+*.blend2

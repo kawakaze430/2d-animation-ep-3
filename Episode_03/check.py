@@ -7,6 +7,8 @@ performed voices, creator approval or rendered film quality.
 """
 
 from pathlib import Path
+import hashlib
+import json
 import re
 import struct
 import sys
@@ -217,24 +219,35 @@ def validate_images(root, episode):
     require(raster_names(environments) == expected_environments,
             'environments: expected unchanged kitchen/table JPGs and three new clean PNG drafts')
     shared = {'HOME_KITCHEN.jpg', 'HOME_TABLE.jpg'}
-    for name in sorted(expected_environments - shared):
-        validate_png(environments / name)
-    for name in sorted(shared):
-        require((environments / name).read_bytes() == (root / 'Episode_01' / 'assets' / 'environments' / name).read_bytes(),
-                f'{name}: preview differs from Episode 01')
-
-    characters = episode / 'assets' / 'characters'
     expected_characters = {f'{name}_{kind}.jpg' for name in CAST
                            for kind in ('portrait', 'sheet')}
     expected_characters.update({'ADULTS_lineup.jpg', 'CHILDREN_lineup.jpg'})
+    expected_references = {f'assets/environments/{name}' for name in shared}
+    expected_references.update(f'assets/characters/{name}' for name in expected_characters)
+    manifest = json.loads((episode / 'assets' / 'reference_checksums.json').read_text(encoding='utf-8'))
+    require(manifest.get('schema_version') == 1, 'reference checksums: unsupported schema')
+    checksums = manifest.get('sha256', {})
+    require(set(checksums) == expected_references,
+            'reference checksums: expected all 16 cast and home previews')
+    for relative, expected in sorted(checksums.items()):
+        require(isinstance(expected, str) and re.fullmatch(r'[0-9a-f]{64}', expected),
+                f'{relative}: invalid SHA-256 baseline')
+        file = episode / relative
+        data = file.read_bytes()
+        require(data.startswith(b'\xff\xd8\xff') and data.endswith(b'\xff\xd9'),
+                f'{file.name}: invalid JPEG preview')
+        require(hashlib.sha256(data).hexdigest() == expected,
+                f'{file.name}: preview differs from committed reference baseline')
+        original = root / 'Episode_01' / relative
+        if original.exists():
+            require(data == original.read_bytes(),
+                    f'{file.name}: preview differs from available Episode 01 original')
+    for name in sorted(expected_environments - shared):
+        validate_png(environments / name)
+
+    characters = episode / 'assets' / 'characters'
     require(raster_names(characters) == expected_characters,
             'characters: expected exactly 14 original cast JPG previews')
-    for name in sorted(expected_characters):
-        data = (characters / name).read_bytes()
-        require(data.startswith(b'\xff\xd8\xff') and data.endswith(b'\xff\xd9'),
-                f'{name}: invalid JPEG preview')
-        require(data == (root / 'Episode_01' / 'assets' / 'characters' / name).read_bytes(),
-                f'{name}: cast preview differs from Episode 01')
     for folder in (boards, environments):
         require((folder / 'GENERATION_NOTES.md').is_file(),
                 f'{folder.name}: missing image-generation provenance notes')
@@ -346,7 +359,7 @@ def validate(repo_root=None):
     validate_images(root, episode)
     svg_count = validate_svgs(episode)
     link_count = validate_links(episode)
-    return f'PASS: Episode 03 — 80 x 15s = 20:00; story/prompt fields and {cue_count} dialogue/SRT cues match; 20 PNG boards map all 80 shot concepts; five environment previews, 14 unchanged cast JPGs, {svg_count} editable SVGs, {link_count} local links; visual/first-frame approval remains pending'
+    return f'PASS: Episode 03 — 80 x 15s = 20:00; story/prompt fields and {cue_count} dialogue/SRT cues match; 20 PNG boards map all 80 shot concepts; five environment previews, 14 cast JPGs pinned to the reference baseline, {svg_count} editable SVGs, {link_count} local links; visual/first-frame approval remains pending'
 
 
 if __name__ == '__main__':
