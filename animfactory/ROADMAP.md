@@ -68,6 +68,13 @@ create a new overall license nor silently switch renderer/provider.
 
 ## Milestone 3: scalable animation authoring and registry
 
+- [x] Browser keyframed clip authoring (issue #6): create/duplicate named
+  reusable sources, drag normalized key points, add/remove channels and keys,
+  choose smooth/linear/step, duration and loop flag, save via existing versioned
+  JSON validation. Two compatible imported rigs reuse the SAME authored clip;
+  tests cover real IK frames, persistence, undo/redo and invalid curves.
+- [ ] Curve playback still uses original ActionMixer, but a rich multilayer
+  state-machine/retarget-mask editor is not complete (issue #7).
 - [ ] Rig hierarchy and explicit parent/child transforms beyond existing
   15-bone compatibility; reusable retarget maps and joint constraints.
 - [ ] Animation layering/masks, state transitions, planted-foot diagnostics
