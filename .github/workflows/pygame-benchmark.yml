@@ -8,10 +8,8 @@ on:
         options: [blocking, production]
         default: blocking
         description: 'Production requires real cutout rigs and approved audio'
-  pull_request:
-    paths:
-      - 'benchmark/pygame/**'
-      - '.github/workflows/pygame-benchmark.yml'
+# Expensive 1080p/360-frame pairing is opt-in after code-review smoke tests.
+# Successful baseline run: https://github.com/kawakaze430/2d-animation-ep-3/actions/runs/43645594305
 
 permissions:
   contents: read
