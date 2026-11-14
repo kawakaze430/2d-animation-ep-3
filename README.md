@@ -53,3 +53,6 @@ Checks validate actual animated frames and media encoding as well as artwork,
 story consistency, joint geometry and hand contact. See the
 [contribution guide](.github/CONTRIBUTING.md) for required-check settings and visual review.
 Passing CI does not replace watching a finished film.
+
+See [delivery status](DELIVERY_STATUS.md) for successful preview runs, finished
+code, committed artwork/dialogue and remaining production-review work.
