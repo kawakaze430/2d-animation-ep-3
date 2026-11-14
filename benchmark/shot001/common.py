@@ -44,6 +44,24 @@ def load_contract() -> tuple[dict, dict]:
     assert shot["camera"] == {"zoom": 1, "center": [960, 540]}
     assert {"recipe_card", "blue_bowl"} <= {p["id"] for p in shot["props"]}
     assert shot["source"]["action"].startswith("Maya places one pancake recipe card")
+    # A single shot-specific choreography correction is shared by both engines.
+    # The baseline's 15-second reach end would drop the props at 2/2.5 seconds
+    # before either hand reached the destination. Nina's left hand was not selected.
+    # Move Nina within actual arm reach without altering camera or story/dialogue.
+    shot["actors"]["MAYA"]["action"].update({"kind": "reach", "hand": "right", "start": 0, "end": 2.0})
+    shot["actors"]["NINA"]["position"] = [1250, 650]
+    shot["actors"]["NINA"]["action"].update({"kind": "reach", "hand": "left", "start": 0, "end": 2.5})
+    shot["actors"]["DAN"]["action"].update({"kind": "gesture", "hand": "right", "start": 2.72, "end": 7.27})
+    for prop in shot["props"]:
+        if prop["id"] == "blue_bowl":
+            prop.update({"shape": "ellipse", "size": [115, 65], "color": "#2447B9"})
+        elif prop["id"] == "yellow_bowl":
+            prop.update({"shape": "ellipse", "size": [110, 60], "color": "#D5B33D"})
+        elif prop["id"] == "recipe_card":
+            prop.update({"shape": "rectangle", "size": [85, 105], "color": "#F1ECE4"})
+    shot["props"].append({"id": "recipe_stand", "shape": "rectangle",
+                          "size": [105, 15], "color": "#73513A",
+                          "position": [590, 680], "depth": 202})
     data["__base_dir__"] = str(ROOT)
     return data, shot
 
@@ -100,6 +118,7 @@ def inputs(audio_dir: Path, require_audio=True) -> dict:
         "fps": FPS,
         "duration": DURATION,
         "dialogue": [list(row) for row in LINES],
+        "shot_choreography_sha256": hashlib.sha256(json.dumps(shot, sort_keys=True).encode()).hexdigest(),
         "input_sha256": {str(p.relative_to(ROOT)) if p.is_relative_to(ROOT) else p.name: sha256(p)
                          for p in sorted(set(paths))},
         "narration_sha256": sha256(narrator) if require_audio else None,
