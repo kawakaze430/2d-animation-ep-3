@@ -251,10 +251,12 @@ class IndependentProductCoreTests(unittest.TestCase):
             return process
         with patch("animfactory.cli.subprocess.Popen", side_effect=spawn):
             result=_encode_video(self.project,"opening",output,mode="blocking",frame_limit=3)
-        self.assertEqual(len(observed),1)
-        self.assertIsNotNone(observed[0].returncode)
-        self.assertTrue(observed[0].stdin.closed)
-        self.assertTrue(observed[0].stderr.closed)
+        encoders=[p for p in observed if p.args[0]=="ffmpeg"]
+        # FFprobe is intentionally a second subprocess used for media QA.
+        self.assertEqual(len(encoders),1)
+        self.assertIsNotNone(encoders[0].returncode)
+        self.assertTrue(encoders[0].stdin.closed)
+        self.assertTrue(encoders[0].stderr.closed)
         self.assertEqual(result["frames"],3)
         self.assertEqual(result["audio"],"none")
         self.assertEqual(result["status"],"SCHEMATIC_BLOCKING_TECHNICAL_ONLY")
