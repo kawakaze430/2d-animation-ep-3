@@ -199,7 +199,7 @@ class ReusableFactoryTests(unittest.TestCase):
     def test_generic_actor_blink_is_visible_in_browser_schematic(self):
         from PIL import Image, ImageChops
         actor = Actor("JUNO", placement={
-            "position": [200, 240], "scale": 1,
+            "position": [200, 340], "scale": 1,
             "actions": [{"clip": "blink", "start": 0, "end": 1}]
         })
         before, during = Image.new("RGBA", (440, 420)), Image.new("RGBA", (440, 420))
