@@ -40,11 +40,24 @@ create a new overall license nor silently switch renderer/provider.
   motion library registry; existing 15-bone format is current compatibility gate.
 - [ ] Hosted authentication and resource isolation; local server only.
 
-## Milestone 2: artwork/rig preparation (separate PR)
+## Milestone 2: artwork/rig preparation (issue #5; first focused PR)
 
-- [ ] Transparent PNG bulk-layer import with validation and preview.
-- [ ] Pivot/anchor editor and visual drag handles; correction tools and tested
-  schema-compatible output, including undoable joint edits.
+- [x] Browser drag/drop import of all 15 separate transparent PNG body-part
+  layers with semantic naming, alpha/image dimension validation, thumbnail
+  review, SHA checks, source/rights metadata and no original-art overwrite.
+- [x] Native Canvas **source pivot and bone-end drag handles**, limb draw
+  depth/mirror controls, fixed anatomical joint anchors, editable arm/leg
+  lengths and a real Pillow/IK assembled character/reach preview.
+- [x] Immutable content-hashed rig JSON revisions with restore, atomic
+  project pointer switching and in-session undo/redo.
+- [x] Synthetic technical fixture tests for layer import, source integrity,
+  rig revision save/load, Pillow pivot effects and studio API security.
+- [ ] Custom parent-child bone hierarchy, per-bone rotation limits, full
+  deformable mesh editor and GUI joint limits: the existing 15-bone roles
+  remain fixed. See issue #8.
+- [ ] Safe in-place artwork replacement/reimport versioning (as distinct
+  from immutable geometry-only rig revisions). Current import requires a
+  new character ID and keeps originals unchanged.
 - [ ] Multi-format review: PSD layer parser, SVG raster adapter (license and
   script sanitization), image metadata/provenance and artwork hash index.
 - [ ] Optional rembg segmentation adapter with license/weight analysis,
@@ -64,8 +77,9 @@ create a new overall license nor silently switch renderer/provider.
 - [ ] Face/eye/blink/emotion blend shapes, multiple viseme sets, reliable
   hand-to-prop gripping and collision-aware interaction when justified.
 - [ ] Secondary motion for clothing/hair, optional deterministic physics.
-- [ ] Full-featured bone/pivot/timeline editor using one primary canvas
-  framework chosen after a real Konva proof on the product data model.
+- [ ] Full-featured rotation/parenting/keyframe timeline editor; native Canvas
+  already handles image pivots. Konva was researched (MIT, maintained) but
+  is not imported before an actual feature/cost comparison (issues #6/#8).
 
 ## Milestone 4: hosted studio and stable API
 
