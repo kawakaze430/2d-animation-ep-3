@@ -147,9 +147,13 @@ def handler_for(project):
             # Also refuse unexpected origins rather than accepting an opaque one.
             origin = self.headers.get("Origin")
             host = self.headers.get("Host", "")
-            url_host = urlsplit("http://" + host)
-            if (url_host.hostname not in ("localhost", "127.0.0.1", "::1") or
-                    url_host.port != self.server.server_port):
+            try:
+                url_host = urlsplit("http://" + host)
+                allowed_host = (url_host.hostname in ("localhost", "127.0.0.1", "::1")
+                                and url_host.port == self.server.server_port)
+            except ValueError:
+                allowed_host = False
+            if not allowed_host:
                 self.error(403, "Invalid local Host header")
                 return
             if origin and origin != "http://" + host:
