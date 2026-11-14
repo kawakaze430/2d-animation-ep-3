@@ -11,6 +11,7 @@ import hashlib
 import importlib.util
 import json
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -81,6 +82,45 @@ def require_audio(project: Path) -> Path:
     return audio
 
 
+def clip_subtitles(source: Path, target: Path, seconds: int) -> Path:
+    """Clip cue packets before muxing; FFmpeg -t does not shorten mov_text cues.
+
+    A cue starting at 13.340 and ending at 15.239 otherwise makes a fifteen-second
+    MP4 report 15.239 seconds even though its audio/video tracks end at 15.000.
+    Preserve exact dialogue text while bounding every retained cue to this export.
+    """
+    def milliseconds(value):
+        hour, minute, second, fraction = map(int, re.split('[:,]', value))
+        if minute >= 60 or second >= 60:
+            raise ValueError(f'Invalid subtitle timestamp: {value}')
+        return ((hour * 60 + minute) * 60 + second) * 1000 + fraction
+
+    def timestamp(value):
+        second, fraction = divmod(value, 1000)
+        minute, second = divmod(second, 60)
+        hour, minute = divmod(minute, 60)
+        return f'{hour:02}:{minute:02}:{second:02},{fraction:03}'
+
+    limit = round(seconds * 1000)
+    result = []
+    text = source.read_text(encoding='utf-8-sig').replace('\r\n', '\n').strip()
+    for block in re.split(r'\n\s*\n', text):
+        lines = block.splitlines()
+        timing = re.fullmatch(r'(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})',
+                              lines[1]) if len(lines) >= 3 and lines[0].isdigit() else None
+        if not timing:
+            raise ValueError('Malformed subtitle block; refusing to publish incomplete captions')
+        begin, end = map(milliseconds, timing.groups())
+        if begin >= end:
+            raise ValueError('Subtitle cue has nonpositive duration')
+        if begin < limit:
+            result.append(f'{len(result)+1}\n{timestamp(begin)} --> {timestamp(min(end, limit))}\n' + '\n'.join(lines[2:]))
+    if not result:
+        raise ValueError('No subtitle cues fall inside the selected render duration')
+    target.write_text('\n\n'.join(result) + '\n', encoding='utf-8')
+    return target
+
+
 def inspect_video(path: Path, seconds: int) -> dict:
     result = subprocess.run(['ffprobe', '-v', 'error', '-count_frames', '-show_streams',
                              '-show_format', '-of', 'json', str(path)],
@@ -91,7 +131,8 @@ def inspect_video(path: Path, seconds: int) -> dict:
     if (video['width'], video['height'], video['codec_name'], int(video['nb_read_frames'])) != (1920, 1080, 'h264', 24*seconds):
         raise RuntimeError('Encoded video dimensions/codec/frame count do not match the selected render')
     if video['avg_frame_rate'] != '24/1' or abs(float(data['format']['duration']) - seconds) > .03:
-        raise RuntimeError('Encoded video timing does not match the selected render')
+        raise RuntimeError(f"Encoded video timing does not match the selected render: expected {seconds}s at 24fps; "
+                           f"found {data['format']['duration']}s at {video['avg_frame_rate']}fps")
     if audio['codec_name'] != 'aac' or audio['channels'] != 2:
         raise RuntimeError('Encoded audio is not stereo AAC')
     subprocess.run(['ffmpeg', '-v', 'error', '-i', str(path), '-f', 'null', '-'], check=True)
@@ -109,9 +150,10 @@ def smoke(project: Path, episode: str, seconds: int) -> Path:
     output.mkdir(exist_ok=True)
     partial = output / f'pipeline_smoke_{seconds}s.partial.mp4'
     result = output / f'pipeline_smoke_{seconds}s.mp4'
+    subtitles = clip_subtitles(project / 'captions.srt', output / f'pipeline_smoke_{seconds}s.srt', seconds)
     command = ['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'rawvideo',
                '-pix_fmt', 'rgb24', '-s', '1920x1080', '-r', '24', '-i', 'pipe:0',
-               '-i', str(audio), '-i', str(project / 'captions.srt'),
+               '-i', str(audio), '-i', str(subtitles),
                '-map', '0:v:0', '-map', '1:a:0', '-map', '2:s:0', '-c:v', 'libx264',
                '-preset', 'veryfast', '-crf', '19', '-threads', '2', '-pix_fmt', 'yuv420p',
                '-c:a', 'aac', '-ac', '2', '-b:a', '192k', '-c:s', 'mov_text', '-t', str(seconds),

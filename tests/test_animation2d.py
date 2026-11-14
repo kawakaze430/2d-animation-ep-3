@@ -2,6 +2,8 @@
 import importlib.util
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -79,6 +81,42 @@ class BuildIsolationTests(unittest.TestCase):
             script.write_text('SHOTS = ["new dialogue"]\n')
             self.assertEqual(runner.source_digest('original'), original)
             self.assertNotEqual(runner.source_digest('02'), continuation)
+
+
+class SubtitleExportTests(unittest.TestCase):
+    def test_clips_boundary_cue_preserving_words_and_drops_later_cues(self):
+        with tempfile.TemporaryDirectory() as folder:
+            output = Path(folder) / 'clipped.srt'
+            runner.clip_subtitles(ROOT / 'animation2d' / 'project' / 'captions.srt', output, 15)
+            text = output.read_text()
+            self.assertIn('00:00:13,340 --> 00:00:15,000\nI stretch my arms.', text)
+            self.assertNotIn('I am ready to get up.', text)
+            self.assertNotIn('00:00:15,239', text)
+
+    @unittest.skipUnless(shutil.which('ffmpeg') and shutil.which('ffprobe'), 'FFmpeg/ffprobe required')
+    def test_crossing_subtitle_does_not_extend_fifteen_second_mp4(self):
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            subtitles = runner.clip_subtitles(ROOT / 'animation2d' / 'project' / 'captions.srt', folder / 'clipped.srt', 15)
+            output = folder / 'synthetic-timing-regression.mp4'
+            # This is a timing/mux regression fixture, not a rendered animation claim.
+            subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'lavfi',
+                            '-i', 'color=c=blue:s=1920x1080:r=24:d=15',
+                            '-i', str(ROOT / 'animation2d' / 'project' / 'audio' / 'narration.flac'),
+                            '-i', str(subtitles), '-map', '0:v:0', '-map', '1:a:0', '-map', '2:s:0',
+                            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '30', '-threads', '2',
+                            '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-ac', '2', '-c:s', 'mov_text',
+                            '-t', '15', str(output)], check=True)
+            report = runner.inspect_video(output, 15)
+            self.assertEqual((report['frames'], report['duration']), (360, 15.0))
+
+    def test_malformed_subtitles_fail_instead_of_silently_dropping_dialogue(self):
+        with tempfile.TemporaryDirectory() as folder:
+            folder = Path(folder)
+            source = folder / 'malformed.srt'
+            source.write_text('1\n00:00:00,500 --> WRONG\nExact words.\n')
+            with self.assertRaisesRegex(ValueError, 'Malformed'):
+                runner.clip_subtitles(source, folder / 'result.srt', 15)
 
 
 if __name__ == '__main__':
