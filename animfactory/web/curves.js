@@ -75,6 +75,7 @@ function curveSample(points,t,mode){
   for(let i=1;i<points.length;i++){
     const a=points[i-1],b=points[i];
     if(t>b[0])continue;
+    if(t===b[0])return b[1]; // same step-key boundary as Python bisect_right
     let u=(t-a[0])/(b[0]-a[0]);
     if(mode==="step")u=0;
     else if(mode==="smooth")u=u*u*(3-2*u);
@@ -274,5 +275,6 @@ function curveWire(){
     if(e.detail.kind!=="keyframed")return;
     curveUI.id=e.detail.id;curveRefreshList(e.detail.id);
   });
+  if(state.doc)curveRefreshList();
 }
 curveWire();
