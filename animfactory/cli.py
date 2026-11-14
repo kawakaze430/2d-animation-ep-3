@@ -56,9 +56,18 @@ def _encode_video(project, scene_id, output, *, mode, frame_limit):
     except Exception:
         if proc.poll() is None:
             proc.kill()
-            proc.communicate()
+        # A failed render must reap its worker even if it already exited.
+        proc.wait()
         output.unlink(missing_ok=True)
         raise
+    finally:
+        # Both pipes are owned by the parent process; closing only stdin
+        # caused ResourceWarning in the CI 3-frame FFmpeg acceptance test.
+        # Never leave stderr descriptors alive until garbage collection.
+        if proc.stdin is not None and not proc.stdin.closed:
+            proc.stdin.close()
+        if proc.stderr is not None and not proc.stderr.closed:
+            proc.stderr.close()
     ffprobe = subprocess.check_output([
         "ffprobe", "-v", "error", "-count_frames",
         "-select_streams", "v:0",
