@@ -47,10 +47,43 @@ for (const id of stage.cast) {
   doc.animations.push(animation);
   const images = new Map();
   let hasBoneMotion = false;
-  // Preserve original authored part draw order; never render a JPG reference as a bone.
+  // Genuine parent/child skeleton: shoulder -> upper arm -> forearm -> hand,
+  // hip -> thigh -> shin -> foot, head -> torso -> pelvis. Inherited scale is
+  // compensated by relative keys so the source PNG pivot remains aligned.
+  const parentBone = (bone) => {
+    if (bone === 'pelvis') return null;
+    if (bone === 'torso') return 'pelvis';
+    if (bone === 'head' || bone.startsWith('upper_arm.')) return 'torso';
+    if (bone.startsWith('thigh.')) return 'pelvis';
+    if (bone.startsWith('forearm.')) return bone.replace('forearm.', 'upper_arm.');
+    if (bone.startsWith('hand.')) return bone.replace('hand.', 'forearm.');
+    if (bone.startsWith('shin.')) return bone.replace('shin.', 'thigh.');
+    if (bone.startsWith('foot.')) return bone.replace('foot.', 'shin.');
+    throw new Error('Unknown cast bone: ' + bone);
+  };
+  const byBone = new Map();
+  for (const part of actor.parts) {
+    if (byBone.has(part.bone)) throw new Error(id + ': duplicate source bone ' + part.bone);
+    byBone.set(part.bone, part);
+  }
+  const boneIndex = new Map();
+  const pending = new Set(actor.parts.map(p => p.bone));
+  while (pending.size) {
+    let progressed = false;
+    for (const part of actor.parts) {
+      if (!pending.has(part.bone)) continue;
+      const parent = parentBone(part.bone);
+      if (parent && !boneIndex.has(parent)) continue;
+      boneIndex.set(part.bone, doc.bones.length);
+      doc.bones.push(makeBone(part.id, parent ? boneIndex.get(parent) : 0,
+                              transform(0, 0, 0), 1));
+      pending.delete(part.bone);
+      progressed = true;
+    }
+    if (!progressed) throw new Error(id + ': invalid bone hierarchy');
+  }
   for (const part of [...actor.parts].sort((a,b) => a.depth-b.depth)) {
-    const i = doc.bones.length;
-    doc.bones.push(makeBone(part.id, 0, transform(0, 0, 0), 1));
+    const i = boneIndex.get(part.bone);
     const p = part.pivot;
     const offset = transform(part.width / 2 - p[0], p[1] - part.height / 2);
     const imageId = part.image.replace(/\.png$/i, '');
@@ -60,7 +93,20 @@ for (const id of stage.cast) {
     doc.images.push({ name: imageId, path: null, width: part.width, height: part.height });
     images.set(imageId, await fs.readFile(path.join(path.dirname(stageFile), part.image)));
     const tl = animation.boneTimelineMut(i);
-    for (const [t, x, y, degrees, factor] of part.frames) {
+    const parent = parentBone(part.bone);
+    for (let k = 0; k < part.frames.length; k++) {
+      let [t, x, y, degrees, factor] = part.frames[k];
+      if (parent) {
+        const parentPart = byBone.get(parent);
+        const [, px, py, pr, ps] = parentPart.frames[k];
+        if (!(ps > 0)) throw new Error(id + ': invalid parent skeleton scale');
+        const rad = -pr * Math.PI / 180;
+        const dx = x - px, dy = y - py;
+        [x, y] = [(Math.cos(rad)*dx - Math.sin(rad)*dy)/ps,
+                  (Math.sin(rad)*dx + Math.cos(rad)*dy)/ps];
+        degrees -= pr;
+        factor /= ps;
+      }
       setKey(tl.translate, t, [x, y]);
       setKey(tl.rotate, t, degrees);
       setKey(tl.scale, t, [factor, factor]);
