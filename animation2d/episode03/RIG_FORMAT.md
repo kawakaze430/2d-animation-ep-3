@@ -55,3 +55,21 @@ image = render_frame(manifest, 'SHOT_001', 1.5, mode='blocking', size=(960,540))
 ```
 
 The manifest can be a parsed mapping or a JSON path. Asset paths default to repository-relative; mappings can specify `__base_dir__` for fixtures/isolated builds. `production_readiness()` returns asset errors for every visible actor. `render_frame()` returns a Pillow RGB image and accepts times in `[0,shot.duration)`. It does not export a movie, generate speech or approve artwork.
+
+
+## Reusable named clips and foot planting (v2 extension)
+
+The paragraph above describing idle/reach/walk/gesture predates the reusable library. These LEGACY clip names remain valid. The complete action vocabulary is now in [actions.py](actions.py), and the original, independent PySpine-inspired named keyframe/pose library is documented in [factory/PRODUCTION_LIBRARY_GUIDE.md](factory/PRODUCTION_LIBRARY_GUIDE.md). Separate source and license details are in [factory/RESEARCH_PYSPINE.md](factory/RESEARCH_PYSPINE.md) and [factory/PYSPINE_LICENSE_NOTICE.txt](factory/PYSPINE_LICENSE_NOTICE.txt).
+
+Every original bone sprite retains its original required part ID, PNG, pivot, optional source_end, and depth. This remains our CANONICAL rig interchange format; PySpine v2's sprite sheet/normalized attachment points are **not** silently substituted. For new scenes using actor.actions, foot_lock defaults on: reserved knee flexion allows planted-stance targets to remain reachable after IK, rather than sliding because legs are fully extended. Explicit foot_lock=false retains the old behavior, and legacy actor.action shots remain unchanged.
+
+New shot JSON may name the same skeletal clip across characters:
+
+    {
+      "position":[960,650],"scale":0.65,"depth":100,
+      "actions":[{"clip":"keyframed","source":"greet","start":0,"end":1.2}]
+    }
+
+Named source motion values are pelvis-relative local rig units transformed by the actor's scale. The same source is sampled for Dan, Maya and Nina without duplicating Python movement code. Hand/elbow/knee positions are still solved by our kinematics.py at each frame. For full identity, artist-authored reference-matched rig part PNGs and facial visemes remain mandatory.
+
+Camera tracks, object ownership, named poses and 15s parallel rendering are documented in the developer guide. A clip passing geometry tests is NOT equivalent to animation acting, lips, character art or director approval.
