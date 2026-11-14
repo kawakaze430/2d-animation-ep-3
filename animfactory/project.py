@@ -329,11 +329,23 @@ class Project:
                 "depth": instance.get("depth", 100), "foot_lock": True,
                 "actions": actions,
             }
+        props = []
+        for item in scene.get("props", []):
+            prop = {key: deepcopy(value) for key, value in item.items() if key != "asset"}
+            if "asset" in item:
+                prop["file"] = doc["assets"][item["asset"]]["path"]
+            props.append(prop)
+        dialogue = []
+        for turn in scene.get("dialogue", []):
+            dialogue.append({
+                "speaker": turn["speaker"], "text": turn["text"],
+                "start": turn["start_frame"] / fps,
+                "end": turn["end_frame"] / fps,
+            })
         shot = {
             "id": scene["id"], "duration": scene["frames"] / fps,
             "cast": list(actors), "actors": actors,
-            "props": deepcopy(scene.get("props", [])),
-            "dialogue": deepcopy(scene.get("dialogue", [])),
+            "props": props, "dialogue": dialogue,
             "camera": deepcopy(scene["camera"]),
         }
         if "camera_animation" in scene:
