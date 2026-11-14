@@ -111,8 +111,9 @@ class ActionMixer:
     Clip intervals are shot-local; end-state locomotion is held after completion.
     """
 
-    def __init__(self, placement: dict, duration: float):
+    def __init__(self, placement: dict, duration: float, *, objects: dict | None = None):
         self.placement = placement
+        self.objects = dict(objects or {})
         self.duration = _number(duration, "shot duration")
         if self.duration <= 0:
             raise ValueError("Shot duration must be positive")
@@ -125,7 +126,22 @@ class ActionMixer:
             original.setdefault("hold_last", action_name(original) in HAND_ACTIONS)
             original["_legacy"] = True
             specs = [original]
-        self.actions = tuple(validate_action(dict(a), self.duration) for a in specs)
+        resolved = []
+        for item in specs:
+            item = validate_action(dict(item), self.duration)
+            obj = item.get("object")
+            if obj is not None:
+                if obj not in self.objects:
+                    raise ValueError(f"Unknown action object: {obj}")
+                prop = self.objects[obj]
+                if not isinstance(prop, dict) or "position" not in prop:
+                    raise ValueError(f"Action object has no world position: {obj}")
+                if "target" not in item and "targets" not in item:
+                    source = (prop.get("interaction", {}).get("landing", prop["position"])
+                              if action_name(item) == "put_down" else prop["position"])
+                    item["target"] = _point(source, f"{obj}.position").tolist()
+            resolved.append(item)
+        self.actions = tuple(resolved)
         self.origin = _point(placement.get("position", [960, 600]), "actor.position")
 
     def sample(self, time: float) -> Motion:
