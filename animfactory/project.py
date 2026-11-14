@@ -125,7 +125,8 @@ class Project:
         initial = empty_project(project_id, title, canvas=canvas, fps=fps)
         motions = json.loads(DEFAULT_LIBRARY.read_text(encoding="utf-8"))
         initial["motion_library"] = {
-            "version": 1, "clips": motions["clips"], "poses": motions["poses"]
+            "version": 1, "clips": motions["clips"], "poses": motions["poses"],
+            "machines": {},
         }
         project = cls(directory, initial)
         project.save()
@@ -324,6 +325,11 @@ class Project:
                 selected["start"] = action["start_frame"] / fps
                 selected["end"] = action["end_frame"] / fps
                 actions.append(selected)
+            if "machine" in instance:
+                from .states import compile_machine
+                actions.extend(compile_machine(instance["machine"],
+                                               doc["motion_library"], fps,
+                                               scene["frames"]))
             actors[instance_id] = {
                 "position": instance["position"], "scale": instance.get("scale", 1),
                 "depth": instance.get("depth", 100), "foot_lock": True,
