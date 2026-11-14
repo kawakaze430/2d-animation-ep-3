@@ -353,11 +353,27 @@ def render_frame(manifest,shot_id,local_time,mode='blocking',size=(960,540),audi
             canvas.alpha_composite(fg,tuple(item.get('position',[0,0])))
         else:
             transform=HandTransform(np.array(item.get('position',[960,600]),dtype=float),float(item.get('rotation',0)),1)
-            attachment=item.get('attachment')
-            if attachment and attachment.get('start',0)<=local_time<attachment.get('end',duration):
-                name=attachment['actor']
-                if name not in actors:raise ValueError(f'Attachment references invisible actor {name}')
-                transform=attachment_transform(actors[name],local_time,attachment,duration)
+            interaction=item.get('interaction')
+            if interaction:
+                # Modern data-driven prop lifetime: one object, wrist-following
+                # while held, final grounded position after release.  This is
+                # shared by all characters and never replaces the legacy API.
+                name=interaction['actor']
+                if name not in actors:
+                    raise ValueError(f'Interaction references invisible actor {name}')
+                if local_time >= interaction['release_at']:
+                    transform=HandTransform(np.asarray(interaction['landing'],dtype=float),
+                                            float(item.get('rotation',0)),1)
+                elif local_time >= interaction['attach_at']:
+                    transform=attachment_transform(actors[name],local_time,interaction,duration)
+                    if not interaction.get('rotate_with_hand',False):
+                        transform.rotation=float(item.get('rotation',0))
+            else:
+                attachment=item.get('attachment')
+                if attachment and attachment.get('start',0)<=local_time<attachment.get('end',duration):
+                    name=attachment['actor']
+                    if name not in actors:raise ValueError(f'Attachment references invisible actor {name}')
+                    transform=attachment_transform(actors[name],local_time,attachment,duration)
             _draw_prop(canvas,item,transform,base)
     camera=shot.get('camera',{})
     zoom=float(camera.get('zoom',1))
