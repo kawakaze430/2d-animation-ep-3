@@ -134,6 +134,13 @@ class ReusableFactoryTests(unittest.TestCase):
         target_n = ActionMixer(nina, 15, objects=props).sample(2.0).hand_targets["left"][0]
         np.testing.assert_allclose(target_m, props["recipe_card"]["position"])
         np.testing.assert_allclose(target_n, props["blue_bowl"]["position"])
+        # Same reusable reach implementation returns the hands after prop release.
+        np.testing.assert_allclose(
+            ActionMixer(maya, 15, objects=props).sample(5)["hand_targets"]["right"][0],
+            [558, 693])
+        np.testing.assert_allclose(
+            ActionMixer(nina, 15, objects=props).sample(5)["hand_targets"]["left"][0],
+            [1212, 693])
         for actor_name, hand in (("MAYA", "right"), ("NINA", "left")):
             actor = Actor(actor_name, placement=scene["actors"][actor_name], objects=props)
             self.assertTrue(np.isfinite(actor.solved_hand(2, hand).position).all())
