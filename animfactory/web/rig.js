@@ -254,7 +254,7 @@ function rigHandlers(){
       refresh(response);rigUI.character=name;await rigLoad();
       rigMessage("All 15 transparent sprites imported and saved with SHA-256 provenance.");
     }catch(e){rigMessage(e.message,true);notice(e.message,true);}
-    finally{rigUI.loading=false;rigPaintImport();}
+    finally{rigUI.loading=false;rg("rigImportSubmit").disabled=rigUI.layers.size!==15;}
   });
   rg("rigCharacter").addEventListener("change",async()=>{
     rigUI.character=rg("rigCharacter").value;
