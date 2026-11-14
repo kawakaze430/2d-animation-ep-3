@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from functools import lru_cache
 import json
 import math
+import hashlib
+import re
 from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
@@ -66,8 +68,8 @@ def _path(base, value):
 class Actor:
     """One actor owns its configuration, artwork, pose state and speech cues."""
     def __init__(self, name, config=None, placement=None, *, mode='blocking', base_dir=REPO, cues=None):
-        if name not in CAST:
-            raise ValueError(f'Unknown cast member: {name}')
+        if not isinstance(name,str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,31}',name):
+            raise ValueError(f'Invalid character ID: {name}')
         if mode not in ('blocking','production'):
             raise ValueError('mode must be blocking or production')
         self.name=name
@@ -220,7 +222,8 @@ class Actor:
         if self.mode=='blocking':
             self._draw_blocking(canvas,pose,t)
             return
-        blink=pose['blink'] if pose['blink'] is not None else ((t+CAST.index(self.name)*.61)%4.1)<.12
+        blink_offset=(CAST.index(self.name) if self.name in CAST else int(hashlib.sha256(self.name.encode()).hexdigest()[:4],16)%11)
+        blink=pose['blink'] if pose['blink'] is not None else ((t+blink_offset*.61)%4.1)<.12
         for part in sorted(self.parts,key=lambda item:item.get('depth',0)):
             start,end=pose['bones'][part['bone']]
             sprite_path=part['path']
@@ -246,7 +249,7 @@ class Actor:
 
     def _draw_blocking(self,canvas,pose,t):
         d=ImageDraw.Draw(canvas)
-        color=COLORS[self.name]; scale=pose['scale']
+        color=COLORS.get(self.name,'#608CA5'); scale=pose['scale']
         for bone,(a,b) in pose['bones'].items():
             if bone not in ('head','pelvis'):
                 width=max(3,round((30 if bone=='torso' else 12)*scale))
@@ -347,6 +350,11 @@ def render_frame(manifest,shot_id,local_time,mode='blocking',size=(960,540),audi
     box=(center[0]-canvas.width/(2*zoom),center[1]-canvas.height/(2*zoom),
          center[0]+canvas.width/(2*zoom),center[1]+canvas.height/(2*zoom))
     canvas=canvas.transform(tuple(map(int,size)),Image.Transform.EXTENT,box,Image.Resampling.BICUBIC)
+    if camera.get('angle',0):
+        camera_angle=float(camera['angle'])
+        if not math.isfinite(camera_angle) or abs(camera_angle)>45:
+            raise ValueError('Camera angle must be finite and within 45 degrees')
+        canvas=canvas.rotate(camera_angle,Image.Resampling.BICUBIC,expand=False)
     if mode=='blocking':
         d=ImageDraw.Draw(canvas)
         d.rectangle((0,0,size[0],32),fill='#28323B')
