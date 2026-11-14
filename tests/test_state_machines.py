@@ -129,7 +129,7 @@ class DeclarativeStateMachineTests(unittest.TestCase):
                 {"at_frame":2,"state":"reach"}]},
             {"source":"common_interaction","steps":[
                 {"at_frame":0,"state":"idle"},
-                {"at_frame":3,"state":"walk","blend_frames":5}]},
+                {"at_frame":3,"state":"walk","blend_frames":12}]},
             {"source":"common_interaction","steps":[
                 {"at_frame":0,"state":"idle"},
                 {"at_frame":3,"state":"walk","params":{"evil_python":"execute"}}]},
