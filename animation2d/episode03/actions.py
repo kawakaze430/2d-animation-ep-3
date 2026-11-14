@@ -164,12 +164,12 @@ class ActionMixer:
             envelope = weight
             if blend:
                 envelope *= min(1, max(0, (t - start) / blend))
-                if t > end - blend:
+                if t > end - blend and not spec.get("hold_last", False):
                     envelope *= min(1, max(0, (end - t) / blend))
             if t >= end and clip not in ("walk", "run") and not spec.get("hold_last", False):
                 continue
             if t >= end:
-                p = 1.
+                p = ease(min(1.0, speed))  # retain the last reachable pose without an end-time snap
                 if clip not in ("walk", "run"):
                     envelope = weight
             named.append(clip)
@@ -192,11 +192,17 @@ class ActionMixer:
                     effect = (envelope if spec.get("_legacy") and targets else p * envelope)
                     if clip == "gesture" and "target" not in spec and not targets and not spec.get("_legacy"):
                         effect = max(effect, envelope)
+                    desired = None if target is None else _point(target, "hand.target")
                     if side in result.hand_targets:
-                        prior_target, prior_weight, prior_clip, prior_p = result.hand_targets[side]
-                        effect = max(effect, prior_weight) if target is None else effect
-                    result.hand_targets[side] = (None if target is None else _point(target, "hand.target"),
-                                                 effect, clip, p)
+                        previous, previous_weight, _previous_clip, _previous_p = result.hand_targets[side]
+                        if desired is None:
+                            desired = previous
+                        elif previous is not None:
+                            # Crossfade the lower-priority hand target toward
+                            # the overlay target; no instant target override.
+                            desired = previous * (1 - effect) + desired * effect
+                        effect = max(effect, previous_weight)
+                    result.hand_targets[side] = (desired, effect, clip, p)
             elif clip == "look":
                 if "target" in spec:
                     result.look = _point(spec["target"], "look.target")
