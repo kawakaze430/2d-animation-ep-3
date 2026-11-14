@@ -62,15 +62,15 @@ class ReusableFactoryTests(unittest.TestCase):
         ]}, 6)
         # Both actions are 50% progressed: 0.5 blend weight times 0.5
         # easing gives 25% transition from prior target to overlay.
-        target = layers.sample(2)["hand_targets"]["right"][0]
+        target = layers.sample(2).hand_targets["right"][0]
         np.testing.assert_allclose(target, [450, 600])
 
         slow = ActionMixer({"position": [500, 600], "actions": [
             {"clip": "reach", "start": 0, "end": 2, "hand": "right",
              "target": [700, 540], "speed": .5, "hold_last": True, "blend": .1}
         ]}, 6)
-        near_end = slow.sample(1.999)["hand_targets"]["right"][1]
-        held = slow.sample(2.001)["hand_targets"]["right"][1]
+        near_end = slow.sample(1.999).hand_targets["right"][1]
+        held = slow.sample(2.001).hand_targets["right"][1]
         self.assertLess(abs(near_end - held), .01)
         self.assertAlmostEqual(held, .5)
         self.assertIn("reach", slow.sample(4)["active"])
@@ -136,10 +136,10 @@ class ReusableFactoryTests(unittest.TestCase):
         np.testing.assert_allclose(target_n, props["blue_bowl"]["position"])
         # Same reusable reach implementation returns the hands after prop release.
         np.testing.assert_allclose(
-            ActionMixer(maya, 15, objects=props).sample(5)["hand_targets"]["right"][0],
+            ActionMixer(maya, 15, objects=props).sample(5).hand_targets["right"][0],
             [558, 693])
         np.testing.assert_allclose(
-            ActionMixer(nina, 15, objects=props).sample(5)["hand_targets"]["left"][0],
+            ActionMixer(nina, 15, objects=props).sample(5).hand_targets["left"][0],
             [1212, 693])
         for actor_name, hand in (("MAYA", "right"), ("NINA", "left")):
             actor = Actor(actor_name, placement=scene["actors"][actor_name], objects=props)
