@@ -133,6 +133,40 @@ class ReusableFactoryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "visible actor"):
             compile_scene(SOURCE, config)
 
+    def test_future_episode_new_character_and_variable_duration(self):
+        from animation2d.episode03.factory_render import fingerprint, chunk
+        config = {
+            "version": 1, "shot": "FUTURE_001", "new_story": True,
+            "duration": 8, "cast": ["JUNO"],
+            "characters": {"JUNO": {"default_scale": .6}},
+            "dialogue": [{"speaker": "JUNO", "text": "Welcome to a new story.",
+                          "start": .5, "end": 3}],
+            "environment": "home_kitchen", "camera": "wide",
+            "actors": {"JUNO": {"position": [740, 640], "scale": .6,
+                                "actions": [
+                                    {"clip": "walk", "start": 0, "end": 3,
+                                     "target": [840, 640]},
+                                    {"clip": "gesture", "start": 3, "end": 6,
+                                     "target": [920, 560]}]}}
+        }
+        future = compile_scene(SOURCE, config)
+        self.assertEqual(future["shots"][0]["id"], "FUTURE_001")
+        self.assertEqual(future["shots"][0]["duration"], 8)
+        self.assertEqual(future["shots"][0]["cast"], ["JUNO"])
+        self.assertEqual(render_frame(future, "FUTURE_001", 7.95, size=(160, 90)).size, (160, 90))
+        with tempfile.TemporaryDirectory() as folder:
+            manifest = Path(folder) / "future.json"
+            manifest.write_text(json.dumps(future))
+            signature = fingerprint(manifest, "blocking", size=(160, 90))
+            self.assertEqual(signature["duration"], 8)
+            part = Path(folder) / "part"
+            result = chunk(manifest, "blocking", 0, 2, part, size=(160, 90))
+            self.assertEqual(result["count"], 2)
+            self.assertTrue((part/"frame_0000.png").exists())
+            # Repeated job is a real incremental cache hit, not a re-render.
+            self.assertEqual(chunk(manifest, "blocking", 0, 2, part, size=(160, 90))["hashes"],
+                             result["hashes"])
+
     def test_original_manifest_remains_unchanged(self):
         initial = SOURCE.read_bytes()
         compile_scene(SOURCE, SHOT)
