@@ -184,8 +184,25 @@ def validate_project(source):
                 if action["id"] in action_ids:
                     _fail(f"{sid}/{actor_id}: duplicate action ID")
                 action_ids.add(action["id"])
+                if set(action) - {
+                    "id", "clip", "source", "start_frame", "end_frame",
+                    "speed", "weight", "blend", "priority", "hold_last",
+                    "target", "targets", "hand", "object", "wrist_rotation",
+                    "degrees", "emotion", "lean"
+                }:
+                    _fail(f"{sid}/{actor_id}: unknown action field")
                 if action.get("clip") not in MOTION_KINDS:
                     _fail(f"{sid}/{actor_id}: unsupported action")
+                for name in ("speed", "blend", "wrist_rotation", "degrees", "lean", "priority"):
+                    if name in action:
+                        number(action[name], f"action.{name}")
+                if "hold_last" in action and type(action["hold_last"]) is not bool:
+                    _fail("hold_last must be boolean")
+                if "targets" in action:
+                    if not isinstance(action["targets"], dict) or not set(action["targets"]) <= {"left", "right"}:
+                        _fail("targets must map hands")
+                    for side, destination in action["targets"].items():
+                        point(destination, f"action.{side}")
                 start, end = action.get("start_frame"), action.get("end_frame")
                 if (type(start) is not int or type(end) is not int or
                         not 0 <= start < end <= length):
