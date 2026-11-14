@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from .kinematics import angle, camera_point, ease, ik, place, rot, walk_foot, wrist_angle
+from .actions import ActionMixer
 
 REPO = Path(__file__).resolve().parents[2]
 CAST = ('DAN','MAYA','NINA','LEO','ELLA','MAX')
@@ -145,23 +146,19 @@ class Actor:
         return next((cue['value'] for cue in self.cues if cue['start']<=t<cue['end']), 'X')
 
     def pose(self,t,duration=15):
+        """Evaluate reusable layered clips, then solve the original per-part IK rig."""
         placement=self.placement
-        origin=np.array(placement.get('position',[960,600]),dtype=float)
+        motion=ActionMixer(placement,duration).sample(t)
+        root=motion.root
         scale=float(placement.get('scale',1))
         if scale<=0 or not math.isfinite(scale):
             raise ValueError('actor scale must be finite and positive')
-        action=placement.get('action',{'kind':'idle'})
-        kind=action.get('kind','idle')
-        if kind not in ('idle','reach','walk','gesture'):
-            raise ValueError(f'Unsupported actor action: {kind}')
-        root=origin.copy()
-        fraction=ease((t-action.get('start',0))/max(.001,action.get('end',duration)-action.get('start',0)))
-        if kind=='walk':
-            root+=(np.array(action.get('target',origin))-origin)*fraction
-        lean=float(placement.get('lean',0))
+        lean=motion.lean
         def point(value):return root+rot(np.array(value)*scale,lean)
         neck=point(self.anchors['neck'])
-        bones={'pelvis':(root,root+rot([0,40*scale],lean)), 'torso':(neck,root), 'head':(neck,neck+rot([0,100*scale],lean))}
+        bones={'pelvis':(root,root+rot([0,40*scale],lean)),
+               'torso':(neck,root),
+               'head':(neck,neck+rot([0,100*scale],lean+motion.head_turn))}
         hands={}; joints={'root':root,'neck':neck}
         for side,sign in [('left',-1),('right',1)]:
             shoulder=point(self.anchors['shoulder_'+side])
@@ -169,34 +166,49 @@ class Actor:
             lower=self.lengths['forearm']*scale
             rest=shoulder+rot([sign*15*scale,(upper+lower)*.91],lean)
             target=rest.copy()
-            active_hand=action.get('hand','right')
-            explicit=action.get('targets',{}).get(side)
-            if explicit is not None:
-                target=np.array(explicit,dtype=float)
-            elif kind in ('reach','gesture') and side==active_hand:
-                desired=np.array(action.get('target',shoulder+[sign*80*scale,-60*scale]),dtype=float)
-                target=rest+(desired-rest)*fraction
-                if kind=='gesture':target+=np.array([0,10*scale*math.sin(t*3)])*fraction
-            elif kind=='walk':
-                target=shoulder+rot([0,(upper+lower)*.91],sign*22*math.sin(root[0]*.03))
+            channel=motion.hand_targets.get(side)
+            if channel is not None:
+                dest, weight, clip, progress=channel
+                if dest is None:
+                    dest=shoulder+np.array([sign*80*scale,-60*scale])
+                target=rest+(dest-rest)*weight
+                if clip in ('gesture','stir','pour','eat'):
+                    frequency={'gesture':3,'stir':9,'pour':2,'eat':2}[clip]
+                    amplitude={'gesture':10,'stir':12,'pour':6,'eat':8}[clip]
+                    target+=np.array([amplitude*scale*math.sin(t*frequency),
+                                      amplitude*scale*math.cos(t*frequency)])*weight
+            elif motion.walking:
+                target=shoulder+rot([0,(upper+lower)*.91],sign*(36 if motion.running else 22)*math.sin(root[0]*.03))
             elbow,wrist=ik(shoulder,target,upper,lower,sign)
-            hand_rotation=wrist_angle(angle(wrist-elbow),action.get('wrist_rotation'))
+            wrist_spec=placement.get('action',{})
+            if 'actions' in placement:
+                wrist_spec=next((a for a in reversed(placement['actions']) if a.get('wrist_rotation') is not None),{})
+            hand_rotation=wrist_angle(angle(wrist-elbow),wrist_spec.get('wrist_rotation'))
             hand_end=wrist+rot([0,30*scale],hand_rotation)
             hands[side]=HandTransform(wrist,hand_rotation,scale)
             bones['upper_arm.'+side]=(shoulder,elbow)
             bones['forearm.'+side]=(elbow,wrist)
             bones['hand.'+side]=(wrist,hand_end)
             hip=point(self.anchors['hip_'+side])
-            ground=origin[1]+(self.anchors['hip_'+side][1]+self.lengths['thigh']+self.lengths['shin'])*scale
+            ground=root[1]+(self.anchors['hip_'+side][1]+self.lengths['thigh']+self.lengths['shin'])*scale
             ankle=np.array([hip[0]+sign*10*scale,ground])
-            if kind=='walk':
-                ankle=walk_foot(root,self.anchors['hip_'+side][0],scale,side,ground,float(action.get('stride',96)))
+            if motion.walking:
+                ankle=walk_foot(root,self.anchors['hip_'+side][0],scale,side,ground,
+                                160 if motion.running else 96)
+            if motion.sitting:
+                seated=np.array([hip[0]+sign*165*scale,hip[1]+165*scale])
+                ankle=ankle*(1-motion.sitting)+seated*motion.sitting
             knee,ankle=ik(hip,ankle,self.lengths['thigh']*scale,self.lengths['shin']*scale,-sign)
             bones['thigh.'+side]=(hip,knee)
             bones['shin.'+side]=(knee,ankle)
             bones['foot.'+side]=(ankle,ankle+np.array([sign*35*scale,0]))
-            joints.update({f'shoulder_{side}':shoulder,f'elbow_{side}':elbow,f'wrist_{side}':wrist,f'hip_{side}':hip,f'knee_{side}':knee,f'ankle_{side}':ankle})
-        return dict(root=root,neck=neck,bones=bones,hands=hands,joints=joints,scale=scale,lean=lean,mouth=self.mouth_shape(t))
+            joints.update({f'shoulder_{side}':shoulder,f'elbow_{side}':elbow,
+                           f'wrist_{side}':wrist,f'hip_{side}':hip,
+                           f'knee_{side}':knee,f'ankle_{side}':ankle})
+        return dict(root=root,neck=neck,bones=bones,hands=hands,joints=joints,
+                    scale=scale,lean=lean,mouth=self.mouth_shape(t),
+                    emotion=motion.emotion,blink=motion.blink,look=motion.look,
+                    active_actions=motion.active)
 
     def solved_hand(self,t,hand='right',duration=15):
         if hand not in ('left','right'):
@@ -208,7 +220,7 @@ class Actor:
         if self.mode=='blocking':
             self._draw_blocking(canvas,pose,t)
             return
-        blink=((t+CAST.index(self.name)*.61)%4.1)<.12
+        blink=pose['blink'] if pose['blink'] is not None else ((t+CAST.index(self.name)*.61)%4.1)<.12
         for part in sorted(self.parts,key=lambda item:item.get('depth',0)):
             start,end=pose['bones'][part['bone']]
             sprite_path=part['path']
@@ -245,7 +257,9 @@ class Actor:
             eye=center+np.array([sign*12*scale,-7*scale])
             d.ellipse((eye[0]-2,eye[1]-2,eye[0]+2,eye[1]+2),fill='#2A3033')
         y=center[1]+17*scale
-        if pose['mouth']=='X':d.line((center[0]-8*scale,y,center[0]+8*scale,y),fill='#643E39',width=2)
+        if pose['mouth']=='X' and pose.get('emotion') in ('happy','excited'):
+            d.arc((center[0]-10*scale,y-10*scale,center[0]+10*scale,y+7*scale),0,180,fill='#643E39',width=2)
+        elif pose['mouth']=='X':d.line((center[0]-8*scale,y,center[0]+8*scale,y),fill='#643E39',width=2)
         else:d.ellipse((center[0]-8*scale,y-3*scale,center[0]+8*scale,y+7*scale),fill='#643E39')
         label=self.name+' [BLOCKING]'
         d.text((center[0],center[1]-ry-25),label,font=_font(max(14,round(20*scale))),anchor='mm',fill=color,stroke_width=2,stroke_fill='white')
