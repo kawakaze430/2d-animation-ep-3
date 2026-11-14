@@ -14,6 +14,7 @@ function refresh(payload){
   if(state.clip>=(actor()?.actions.length||0))state.clip=-1;
   el("projectInfo").textContent=state.doc.title+" · "+state.doc.canvas.join("×")+" · "+state.doc.fps+"fps";
   showSidebar();showScene();notice("Saved locally");
+  window.dispatchEvent(new Event("animfactory:project-updated"));
 }
 function showSidebar(){
   const scenes=el("scenes");scenes.replaceChildren();
