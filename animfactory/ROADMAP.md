@@ -108,6 +108,17 @@ create a new overall license nor silently switch renderer/provider.
 
 ## Milestone 5: independent provider adapters (opt-in only)
 
+- [x] Disabled-by-default typed image adapter and registry, per-operation
+  network/billable approval gates, source/output PNG validation, asset
+  provenance and SHA-256 integration.
+- [x] Deterministic Pillow-only offline background threshold fixture plus
+  mocked preloaded-session rembg adapter boundary. Tests use dummy sessions
+  and never download model weights, touch the network or invoke billed AI.
+- [ ] Execute an actual licensed, pinned local rembg model only after explicit
+  owner opt-in and model-weight/legal review. Current adapter is tested against
+  mock calls, not real inference or image-cutout quality.
+- [ ] Hard preemptive timeouts, worker cancellation, provider health checks,
+  secret/network isolation and robust hosted permission boundaries (issue #9).
 - [ ] Provider registry with strict capabilities, opaque asset handles,
   network/secret permission boundaries, costs and retry/timeout/cancellation.
 - [ ] At most one primary opt-in service per capability: artwork (ComfyUI),
