@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "states": {
+    "idle": {
+      "actions": [
+        {
+          "clip": "idle"
+        }
+      ]
+    },
+    "walk": {
+      "actions": [
+        {
+          "clip": "walk",
+          "hold_last": true
+        }
+      ]
+    },
+    "reach": {
+      "actions": [
+        {
+          "clip": "reach",
+          "hand": "right",
+          "hold_last": true
+        }
+      ]
+    },
+    "hold": {
+      "actions": [
+        {
+          "clip": "hold",
+          "hand": "right",
+          "hold_last": true
+        }
+      ]
+    },
+    "release": {
+      "actions": [
+        {
+          "clip": "put_down",
+          "hand": "right",
+          "hold_last": true
+        }
+      ]
+    },
+    "speaking": {
+      "actions": [
+        {
+          "clip": "talk",
+          "emotion": "neutral"
+        }
+      ]
+    }
+  },
+  "allowed_transitions": [
+    [
+      "idle",
+      "walk"
+    ],
+    [
+      "walk",
+      "reach"
+    ],
+    [
+      "reach",
+      "hold"
+    ],
+    [
+      "hold",
+      "release"
+    ],
+    [
+      "release",
+      "idle"
+    ],
+    [
+      "idle",
+      "reach"
+    ],
+    [
+      "reach",
+      "idle"
+    ],
+    [
+      "walk",
+      "idle"
+    ]
+  ]
+}
