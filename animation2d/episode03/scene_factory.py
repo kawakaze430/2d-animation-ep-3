@@ -50,6 +50,8 @@ def compile_scene(manifest, scene, *, templates=None, root=REPO):
         if not conf.get("new_story"):
             raise ValueError("Unknown shot; new scenes must declare new_story=true")
         cast = conf.get("cast")
+        for actor, config in conf.get("characters", {}).items():
+            doc["characters"][actor] = deepcopy(config)
         dialogue = conf.get("dialogue")
         if not isinstance(cast, list) or not cast or not all(a in doc["characters"] for a in cast):
             raise ValueError("New story cast must be configured in characters")
