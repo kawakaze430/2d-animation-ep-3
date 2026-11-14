@@ -1,0 +1,205 @@
+name: Reusable 2D animation factory - cached 15s scene
+
+on:
+  workflow_dispatch:
+    inputs:
+      scene:
+        type: string
+        description: 'JSON scene identifier (e.g. SHOT_001)'
+        default: SHOT_001
+      mode:
+        type: choice
+        description: 'Production REQUIRES original transparent rigs + generated audio'
+        options: [blocking, production]
+        default: blocking
+
+permissions:
+  contents: read
+
+concurrency:
+  group: factory-${{ github.ref }}-${{ inputs.scene }}-${{ inputs.mode }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    outputs:
+      fingerprint: ${{ steps.fingerprint.outputs.value }}
+    env:
+      MODE: ${{ inputs.mode }}
+      SCENE_ID: ${{ inputs.scene }}
+      PYTHONUNBUFFERED: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Install image + media toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
+          python -m pip install -r animation2d/project/requirements.txt
+      - name: Compile ONE immutable data-driven scene
+        run: |
+          if [[ ! "$SCENE_ID" =~ ^SHOT_[0-9]{3}$ ]]; then exit 2; fi
+          mkdir -p build/factory
+          python -m animation2d.episode03.scene_factory \
+            --scene "animation2d/episode03/factory/scenes/$SCENE_ID.json" \
+            --output build/factory/scene.json
+      - name: Gate expensive speech model download behind production-art readiness
+        run: |
+          if [[ "$MODE" == "production" ]]; then
+            python - <<'PY'
+          import json
+          from animation2d.episode03.engine import production_readiness
+          data=json.load(open('build/factory/scene.json'))
+          shot=data['shots'][0]['id']
+          problems=production_readiness(data,shot)
+          if problems: raise SystemExit('Production rigs missing (no fake artwork permitted): ' + '; '.join(problems))
+          PY
+          fi
+      - name: Install Kokoro and Rhubarb prerequisites
+        if: inputs.mode == 'production'
+        run: |
+          sudo apt-get install -y --no-install-recommends espeak-ng libespeak-ng1
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install 'kokoro==0.9.4' 'transformers<5' soundfile espeakng-loader phonemizer 'huggingface_hub>=0.25,<1'
+          python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+      - name: Download verified speech and aligner resources
+        if: inputs.mode == 'production'
+        id: voice
+        run: |
+          python tools/setup_voice.py --output build/factory/voice-tools \
+            --voices af_heart af_bella af_nova am_michael am_fenrir am_puck \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Synthesize one reusable shot-local voice master and independent mouth cues
+        if: inputs.mode == 'production'
+        env:
+          MODEL_DIR: ${{ steps.voice.outputs.model_dir }}
+          RHUBARB: ${{ steps.voice.outputs.rhubarb }}
+        run: |
+          python -m animation2d.episode03.voice \
+            --manifest build/factory/scene.json --shot "$SCENE_ID" \
+            --models "$MODEL_DIR" --rhubarb "$RHUBARB" \
+            --output build/factory/audio
+      - name: Compute complete content-addressed input checksum
+        id: fingerprint
+        run: |
+          python -m animation2d.episode03.factory_render prepare \
+            --manifest build/factory/scene.json --mode "$MODE" \
+            --audio-dir build/factory/audio > build/factory/fingerprint.json
+          python - <<'PY'
+          import json,os
+          value=json.load(open('build/factory/fingerprint.json'))['fingerprint']
+          with open(os.environ['GITHUB_OUTPUT'],'a') as fd: fd.write('value='+value+'\n')
+          print(value)
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: factory-scene-and-audio
+          path: |
+            build/factory/scene.json
+            build/factory/fingerprint.json
+            build/factory/audio/
+          if-no-files-found: error
+          retention-days: 30
+
+  frames:
+    needs: prepare
+    strategy:
+      fail-fast: true
+      matrix:
+        index: [0, 1, 2, 3, 4, 5]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      MODE: ${{ inputs.mode }}
+      FINGERPRINT: ${{ needs.prepare.outputs.fingerprint }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Install minimal frame-rendering dependencies
+        run: python -m pip install -r animation2d/project/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: factory-scene-and-audio
+          path: build/factory
+      - name: Restore immutable frame chunk cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: build/factory/chunks/chunk_${{ matrix.index }}
+          key: factory-v1-${{ needs.prepare.outputs.fingerprint }}-chunk-${{ matrix.index }}
+      - name: Render only missing deterministic frame range
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p build/factory/chunks/chunk_${{ matrix.index }}
+          date -u +%Y-%m-%dT%H:%M:%S.%NZ > build/factory/chunks/chunk_${{ matrix.index }}/runner_start.txt
+          python -m animation2d.episode03.factory_render chunk \
+            --manifest build/factory/scene.json --mode "$MODE" \
+            --audio-dir build/factory/audio \
+            --start $((60 * ${{ matrix.index }})) --count 60 \
+            --output build/factory/chunks/chunk_${{ matrix.index }}
+          date -u +%Y-%m-%dT%H:%M:%S.%NZ > build/factory/chunks/chunk_${{ matrix.index }}/runner_end.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: factory-chunk-${{ matrix.index }}
+          path: build/factory/chunks/chunk_${{ matrix.index }}/
+          if-no-files-found: error
+          retention-days: 14
+
+  assemble:
+    needs: [prepare, frames]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      MODE: ${{ inputs.mode }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Install FFmpeg and final compositor requirements
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          python -m pip install -r animation2d/project/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: factory-scene-and-audio
+          path: build/factory
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: factory-chunk-*
+          path: build/factory/chunks
+      - name: Verify every frame and create encoded 15s MP4, contact sheet and report
+        run: |
+          python -m animation2d.episode03.factory_render assemble \
+            --manifest build/factory/scene.json --mode "$MODE" \
+            --audio-dir build/factory/audio \
+            --chunks build/factory/chunks --output build/factory/final
+      - name: Browser shot review pack (static samples labeled; not a substitute for MP4)
+        run: |
+          python -m animation2d.episode03.preview \
+            --manifest build/factory/scene.json --export build/factory/review
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: Episode03-Factory-${{ inputs.scene }}-${{ inputs.mode }}-${{ github.run_id }}
+          path: |
+            build/factory/final/
+            build/factory/scene.json
+            build/factory/fingerprint.json
+            build/factory/review/
+            animation2d/episode03/factory/scenes/
+            animation2d/episode03/factory/templates.json
+            animation2d/episode03/actions.py
+          if-no-files-found: warn
+          retention-days: 30
