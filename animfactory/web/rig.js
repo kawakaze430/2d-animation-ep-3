@@ -298,6 +298,9 @@ function rigHandlers(){
     try{await rigMutate("/api/rig/restore",{version:rg("rigVersions").value});}
     catch(e){rigMessage(e.message,true);}
   });
+  window.addEventListener("animfactory:project-updated",()=>{
+    if(rg("rigDialog").open)rigLoad().catch(e=>rigMessage(e.message,true));
+  });
   rg("rigFullImage").addEventListener("error",()=>rigMessage("Saved rig could not be rendered; check technical QA.",true));
 }
 rigHandlers();
