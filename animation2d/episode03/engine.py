@@ -195,10 +195,21 @@ class Actor:
             bones['hand.'+side]=(wrist,hand_end)
             hip=point(self.anchors['hip_'+side])
             ground=root[1]+(self.anchors['hip_'+side][1]+self.lengths['thigh']+self.lengths['shin'])*scale
+            # A planted world-space target is only useful if both leg bones
+            # can actually reach it. The old straight-leg ground height
+            # exhausted IK reach and made solved ankles slide despite a
+            # mathematically planted walk_foot() target. Reserve some knee
+            # flexion in modern, data-driven scenes. Legacy shots stay intact.
+            foot_lock=placement.get('foot_lock', 'actions' in placement)
+            if type(foot_lock) is not bool:
+                raise ValueError('foot_lock must be boolean')
+            stride=(160 if motion.running else 96)
+            if foot_lock:
+                stride*=scale/.6  # gait adapts to rig scale rather than cast name
+                ground-=max(32*scale, (160*scale/.6)*.18)
             ankle=np.array([hip[0]+sign*10*scale,ground])
             if motion.walking:
-                ankle=walk_foot(root,self.anchors['hip_'+side][0],scale,side,ground,
-                                160 if motion.running else 96)
+                ankle=walk_foot(root,self.anchors['hip_'+side][0],scale,side,ground,stride)
             if motion.sitting:
                 seated=np.array([hip[0]+sign*165*scale,hip[1]+165*scale])
                 ankle=ankle*(1-motion.sitting)+seated*motion.sitting
