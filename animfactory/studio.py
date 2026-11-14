@@ -47,7 +47,7 @@ def handler_for(project):
             self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("X-Frame-Options", "DENY")
             self.send_header("Content-Security-Policy",
-                             "default-src 'self'; img-src 'self' data:; "
+                             "default-src 'self'; img-src 'self' data: blob:; "
                              "script-src 'self'; style-src 'self'; "
                              "connect-src 'self'; object-src 'none'; frame-ancestors 'none'")
             self.end_headers()
