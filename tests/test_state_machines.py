@@ -108,7 +108,7 @@ class DeclarativeStateMachineTests(unittest.TestCase):
         manifest=self.project.compile_scene("hello")
         actor=manifest["shots"][0]["actors"]["ALEX"]
         mixer=ActionMixer(actor,2,objects={})
-        x0=mixer.sample(0)["root"] if isinstance(mixer.sample(0),dict) else mixer.sample(0).root
+        x0=mixer.sample(0).root
         x1=mixer.sample(15/12).root
         x2=mixer.sample(22/12).root
         self.assertGreater(x1[0],x0[0])
