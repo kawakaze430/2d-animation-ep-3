@@ -7,6 +7,7 @@ No arbitrary filesystem reads or arbitrary Python execution endpoints.
 from __future__ import annotations
 
 import hashlib
+from copy import deepcopy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 import json
@@ -14,11 +15,15 @@ from pathlib import Path
 import threading
 from urllib.parse import parse_qs, urlsplit
 
+from .rigging import (decode_layers, import_layers, rig_info, commit_rig_edit,
+                      restore_rig_version, original_rig_preview, sprite_bytes)
+
 from .editing import EditSession
 from .schema import stable_bytes
 
 WEB = Path(__file__).resolve().parent / "web"
 MAX_BODY = 65536
+MAX_LAYER_BODY = 64 * 1024 * 1024
 
 
 def revision(project):
@@ -70,6 +75,35 @@ def handler_for(project):
                     self.json(200, {"project": project.doc, "revision": revision(project),
                                     "undo": session.can_undo, "redo": session.can_redo})
                 return
+            if route in ("/api/rig", "/api/rig-image", "/api/rig-preview"):
+                try:
+                    params = parse_qs(url.query)
+                    allowed = ({"character","bone"} if route == "/api/rig-image"
+                               else {"character","movement"} if route == "/api/rig-preview"
+                               else {"character"})
+                    if set(params) - allowed or any(len(value) != 1 for value in params.values()):
+                        raise ValueError("Unknown rig preview query")
+                    character = params.get("character", [""])[0]
+                    if not character:
+                        raise ValueError("Choose a registered character")
+                    with lock:
+                        if route == "/api/rig":
+                            self.json(200, {"rig": rig_info(project, character),
+                                            "revision": revision(project)})
+                        elif route == "/api/rig-image":
+                            bone = params.get("bone", [""])[0]
+                            self.reply(200, sprite_bytes(project, character, bone), "image/png")
+                        else:
+                            flag = params.get("movement", ["0"])[0]
+                            if flag not in ("0", "1"):
+                                raise ValueError("movement must be 0 or 1")
+                            img = original_rig_preview(project, character, movement=flag=="1")
+                            buffer = BytesIO()
+                            img.save(buffer, format="PNG")
+                            self.reply(200, buffer.getvalue(), "image/png")
+                except (ValueError, TypeError, KeyError, FileNotFoundError) as error:
+                    self.error(400, error)
+                return
             if route == "/api/motions":
                 params = parse_qs(url.query)
                 with lock:
@@ -103,24 +137,30 @@ def handler_for(project):
 
         def do_POST(self):
             url = urlsplit(self.path)
-            if url.path not in ("/api/edit", "/api/undo", "/api/redo"):
+            if url.path not in ("/api/edit", "/api/undo", "/api/redo",
+                                 "/api/rig/import", "/api/rig/edit", "/api/rig/restore"):
                 self.error(404, "Unknown route")
                 return
             # A cross-origin form cannot send application/json without CORS
             # preflight, and the server never grants cross-origin permissions.
             # Also refuse unexpected origins rather than accepting an opaque one.
             origin = self.headers.get("Origin")
-            if origin:
-                valid = ("http://localhost:", "http://127.0.0.1:", "http://[::1]:")
-                if not origin.startswith(valid):
-                    self.error(403, "Local editor only")
-                    return
+            host = self.headers.get("Host", "")
+            url_host = urlsplit("http://" + host)
+            if (url_host.hostname not in ("localhost", "127.0.0.1", "::1") or
+                    url_host.port != self.server.server_port):
+                self.error(403, "Invalid local Host header")
+                return
+            if origin and origin != "http://" + host:
+                self.error(403, "Cross-origin rig editing is prohibited")
+                return
             if self.headers.get("Content-Type", "").split(";")[0].strip() != "application/json":
                 self.error(415, "Use Content-Type: application/json")
                 return
             try:
                 length = int(self.headers.get("Content-Length", "0"))
-                if length < 2 or length > MAX_BODY:
+                limit = MAX_LAYER_BODY if url.path == "/api/rig/import" else MAX_BODY
+                if length < 2 or length > limit:
                     raise ValueError("Invalid JSON request size")
                 data = json.loads(self.rfile.read(length))
                 if not isinstance(data, dict) or not isinstance(data.get("revision"), str):
@@ -133,8 +173,31 @@ def handler_for(project):
                         session.apply(data.get("command"), save=True)
                     elif url.path == "/api/undo":
                         session.undo(save=True)
-                    else:
+                    elif url.path == "/api/redo":
                         session.redo(save=True)
+                    elif url.path == "/api/rig/import":
+                        # No external path, provider or arbitrary filename is
+                        # accepted. The exact 15 semantic roles are required.
+                        if set(data) != {"revision", "character", "layers", "source", "license"}:
+                            raise ValueError("Rig import needs revision, character, layers, source and license")
+                        if not isinstance(data["source"], str) or not isinstance(data["license"], str):
+                            raise ValueError("Artwork provenance must be strings")
+                        raw = decode_layers(data["layers"])
+                        import_layers(project, data["character"], raw,
+                                      source=data["source"], license=data["license"])
+                        session.reset()  # immutable artwork imports aren't undoable
+                    elif url.path == "/api/rig/edit":
+                        if set(data) != {"revision", "character", "edit"}:
+                            raise ValueError("Rig edit needs character and edit operation")
+                        before = deepcopy(project.doc)
+                        commit_rig_edit(project, data["character"], data["edit"])
+                        session.record_external(before)
+                    elif url.path == "/api/rig/restore":
+                        if set(data) != {"revision", "character", "version"}:
+                            raise ValueError("Rig restore needs character and saved version")
+                        before = deepcopy(project.doc)
+                        restore_rig_version(project, data["character"], data["version"])
+                        session.record_external(before)
                     self.json(200, {"project": project.doc, "revision": revision(project),
                                     "undo": session.can_undo, "redo": session.can_redo})
             except (ValueError, TypeError, KeyError, IndexError, PermissionError,
