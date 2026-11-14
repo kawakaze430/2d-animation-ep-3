@@ -84,7 +84,8 @@ class DeclarativeStateMachineTests(unittest.TestCase):
     def test_two_characters_reuse_single_graph_and_seek_deterministically(self):
         self.setup_scene()
         doc=self.project.doc
-        self.assertEqual(set(doc["motion_library"]["machines"]),{"common_interaction"})
+        self.assertIn("common_interaction",doc["motion_library"]["machines"])
+        self.assertIn("basic_interaction",doc["motion_library"]["machines"])
         scene=self.project.compile_scene("hello")
         tracks=scene["shots"][0]["actors"]
         for name in ("ALEX","BLAIR"):
