@@ -1,0 +1,21 @@
+name: Tool comparison - repository baseline
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [work]
+    paths: ['.github/workflows/comparison-baseline.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  repository-tools:
+    name: Original painted Python renderer - 15 seconds
+    uses: ./.github/workflows/render-2d.yml
+    with:
+      episode: original
+      voice: included
+      scope: preview15
+      workers: '2'
+      speed: 0.85
