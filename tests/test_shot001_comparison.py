@@ -8,6 +8,7 @@ from benchmark.shot001.common import (
     CAST, DURATION, FPS, LINES, MANIFEST, SHOT, inputs, load_contract,
 )
 from benchmark.shot001.compare import compare
+from benchmark.shot001.render import render as production_render
 
 
 class Episode03FairComparisonTests(unittest.TestCase):
