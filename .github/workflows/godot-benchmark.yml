@@ -44,19 +44,19 @@ jobs:
       - name: Download upstream checksum-verified Godot 4.7.2
         run: |
           curl -fL --retry 3 --connect-timeout 20 \
-            "https://github.com/godotengine/godot/releases/download/$GODOT_VERSION/Godot_v$GODOT_VERSION_linux.x86_64.zip" \
+            "https://github.com/godotengine/godot/releases/download/$GODOT_VERSION/Godot_v${GODOT_VERSION}_linux.x86_64.zip" \
             -o /tmp/godot.zip
           echo "$GODOT_ZIP_SHA256  /tmp/godot.zip" | sha256sum --check
           unzip -o /tmp/godot.zip -d /tmp/godot-bin
-          chmod +x "/tmp/godot-bin/Godot_v$GODOT_VERSION_linux.x86_64"
-          "/tmp/godot-bin/Godot_v$GODOT_VERSION_linux.x86_64" --version
+          chmod +x "/tmp/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64"
+          "/tmp/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64" --version
       - name: Render same art and pose with Godot Sprite2D / AnimationPlayer
         run: |
           mkdir -p build/godot-bench/godot
           /usr/bin/time -f '%e %M' -o build/godot-bench/godot_time.txt \
             xvfb-run -a -s '-screen 0 1280x800x24' \
             env LIBGL_ALWAYS_SOFTWARE=1 GALLIUM_DRIVER=llvmpipe \
-            "/tmp/godot-bin/Godot_v$GODOT_VERSION_linux.x86_64" \
+            "/tmp/godot-bin/Godot_v${GODOT_VERSION}_linux.x86_64" \
             --path benchmark/godot/godot \
             --rendering-method gl_compatibility \
             --write-movie "$PWD/build/godot-bench/godot/godot.png" \
