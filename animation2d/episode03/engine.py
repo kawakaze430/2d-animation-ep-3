@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from .kinematics import angle, camera_point, ease, ik, place, rot, walk_foot, wrist_angle
 from .actions import ActionMixer
+from .motion_clips import ClipLibrary
 from .camera_clips import sample_camera
 
 REPO = Path(__file__).resolve().parents[2]
@@ -68,7 +69,7 @@ def _path(base, value):
 
 class Actor:
     """One actor owns its configuration, artwork, pose state and speech cues."""
-    def __init__(self, name, config=None, placement=None, *, mode='blocking', base_dir=REPO, cues=None, objects=None):
+    def __init__(self, name, config=None, placement=None, *, mode='blocking', base_dir=REPO, cues=None, objects=None, library=None):
         if not isinstance(name,str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{0,31}',name):
             raise ValueError(f'Invalid character ID: {name}')
         if mode not in ('blocking','production'):
@@ -77,6 +78,7 @@ class Actor:
         self.config=dict(config or {})
         self.placement=dict(placement or {})
         self.objects=dict(objects or {})
+        self.library=library
         self.mode=mode
         self.cues=list(cues or [])
         self.rig={}
@@ -152,7 +154,7 @@ class Actor:
     def pose(self,t,duration=15):
         """Evaluate reusable layered clips, then solve the original per-part IK rig."""
         placement=self.placement
-        motion=ActionMixer(placement,duration,objects=self.objects).sample(t)
+        motion=ActionMixer(placement,duration,objects=self.objects,library=self.library).sample(t)
         root=motion.root
         scale=float(placement.get('scale',1))
         if scale<=0 or not math.isfinite(scale):
@@ -351,8 +353,9 @@ def render_frame(manifest,shot_id,local_time,mode='blocking',size=(960,540),audi
     configs=data.get('characters',{})
     if isinstance(configs,list):configs={item['id']:item for item in configs}
     objects={prop['id']:prop for prop in shot.get('props',[]) if 'id' in prop}
+    library=ClipLibrary(data['motion_library']) if 'motion_library' in data else None
     actors={name:Actor(name,configs.get(name,{}),shot.get('actors',{}).get(name,{}),mode=mode,base_dir=base,
-                       cues=_cues(audio_dir,shot_id,name),objects=objects) for name in shot['cast']}
+                       cues=_cues(audio_dir,shot_id,name),objects=objects,library=library) for name in shot['cast']}
     items=[]
     for name,actor in actors.items():
         items.append((float(actor.placement.get('depth',100)),len(items),'actor',actor))
@@ -417,10 +420,11 @@ def production_readiness(manifest,shot_id,audio_dir=None):
     if isinstance(configs,list):configs={item['id']:item for item in configs}
     errors=[]
     objects={prop['id']:prop for prop in shot.get('props',[]) if 'id' in prop}
+    library=ClipLibrary(data['motion_library']) if 'motion_library' in data else None
     for name in shot['cast']:
         try:
             Actor(name,configs.get(name,{}),shot.get('actors',{}).get(name,{}),mode='production',
-                  base_dir=data.get('__base_dir__',REPO),cues=_cues(audio_dir,shot_id,name),objects=objects)
+                  base_dir=data.get('__base_dir__',REPO),cues=_cues(audio_dir,shot_id,name),objects=objects,library=library)
         except (AssetError,OSError,ValueError,KeyError,TypeError) as exc:
             errors.append(f'{name}: {exc}')
     return errors
