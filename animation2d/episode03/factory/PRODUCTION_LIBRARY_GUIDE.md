@@ -1,0 +1,142 @@
+# Reusable animation factory v2 — developer integration guide
+
+The original renderer, Episode 03 screenplay, actor rigs, independent Rhubarb mouth tracks, Pillow/NumPy math and FFmpeg export remain authoritative. The v2 library adds original character-independent skeletal keyframe/pose data inspired by [PySpine v2](RESEARCH_PYSPINE.md), without importing its incompatible sprite-sheet rig representation.
+
+## 1. Reusable action and motion APIs
+
+There are TWO compatible motion layers:
+
+- Procedural intent actions: idle, walk, run, sit, talk, blink, look, reach, hold, pick_up, put_down, carry, pour, stir, eat, react and gesture. Existing JSON clips and the old singular action field continue to work.
+- Authored rig-local motions: keyframed and pose. Specify a named source in [clip_library.json](clip_library.json). These are stored ONCE; no character name or episode number appears in a motion clip.
+
+Example actor from JSON scene:
+
+    {
+      "position": [960,650], "scale":0.65, "depth":100,
+      "foot_lock":true,
+      "actions":[
+        {"clip":"walk","start":0,"end":3,"target":[1160,650]},
+        {"clip":"keyframed","source":"greet","start":3,"end":4.2,"blend":0.1},
+        {"clip":"talk","start":3.1,"end":5,"emotion":"happy"},
+        {"clip":"pose","source":"hold_tray","start":5,"end":12,
+         "weight":0.6,"hold_last":true},
+        {"clip":"blink","start":6,"end":6.2}
+      ]
+    }
+
+Sample programmatically with a real reusable rig instance:
+
+    from animation2d.episode03.actions import ActionMixer
+    from animation2d.episode03.motion_clips import ClipLibrary, default_library
+
+    actor = {"position":[960,650], "scale":0.65, "actions":[
+        {"clip":"keyframed", "source":"greet", "start":0, "end":1.2}
+    ]}
+    pose = ActionMixer(actor, 15).sample(0.6)
+    print(pose.hand_targets["right"])
+
+In clip_library.json, numeric tracks are keyed by normalized time in [0,1]. Each keyframe is [time,value]. Modes are step, linear, smooth. A clip has duration in seconds, loop flag and recognized channels:
+root_x, root_y, left_x, left_y, right_x, right_y, lean, head_turn, sitting, blink.
+
+Local hand coordinates and root offsets are relative to the character pelvis and automatically multiplied by that actor's scale. The IK solver remains responsible for the actual shoulder-elbow-wrist and hip-knee-ankle geometry. Loops must meet seamlessly at key times 0 and 1; invalid/future/NaN/duplicate/unsupported channels fail validation. Reusable pose entries contain fixed channel values rather than frames.
+
+These are **rig-local pose tracks**, not a universal animation-retargeting system for arbitrary humanoid skeletons. Existing rigs use 15 named bones, so different anatomies require a deliberately authored rig map and visual review.
+
+## 2. Producing three different shots with the SAME motion implementation
+
+Run from repository root:
+
+    python -m animation2d.episode03.factory_demo --motion-clip greet --output build/shared_greet.json
+    python -m animation2d.episode03.preview --manifest build/shared_greet.json
+
+This creates DEMO_000 (Dan), DEMO_001 (Maya), DEMO_002 (Nina). All three scenes reference exactly the same named greet motion preset. Their positions, scales and rigs differ; the Python clip sampler and IK logic do not. The preview labels them as SCHEMATIC, not final film art.
+
+Rig object creation is done once per actor; future episodes reuse the same rig JSON and transparent PNG part files. [RIG_FORMAT.md](../RIG_FORMAT.md) defines pivots, 15 required bones, face sprites and independent mouth cues.
+
+## 3. Scene JSON, environment and camera
+
+Start with [SHOT_001.json](scenes/SHOT_001.json) and [templates.json](templates.json). Existing Episode 03 dialogue is immutable, so scene JSON may change staging, actions, props, camera, environment and foreground layers, not spoken words. For a genuinely new story, compile a new manifest with character definitions and new_story=true; the existing Kokoro voice orchestrator still requires six named presets, so a new voice registry is a separate planned production task.
+
+Animated camera example:
+
+    "camera": "three_shot",
+    "camera_animation": {
+      "center_x": {"mode":"smooth", "keys":[[0,960],[6,1020],[15,960]]},
+      "center_y": {"mode":"linear", "keys":[[0,540],[15,545]]},
+      "zoom": {"mode":"smooth", "keys":[[0,1],[7,1.08],[15,1]]}
+    }
+
+All positions use original 1920x1080 world pixels. Actor.position is the pelvis. Camera applies after actors, props and foregrounds have been composited. Camera and pose sampling are deterministic at random-access time; no frame-by-frame simulation history is required.
+
+## 4. Persistent state, attachments and lip sync
+
+Keep Episode 03 state transitions in ../state.py and the original manifest; both are validated across the episode. New future episodes should provide a separate persistent prop/ingredient/state ledger and test events for continuity; it is not generated by motion clips.
+
+Props may be attached to either anatomical hand with a single interaction record, the object's ID, attach_at, release_at, offset and landing. Actor actions may refer to the same object ID rather than duplicating its world coordinates:
+
+    {
+      "id":"blue_bowl","position":[1120,650],"depth":204,
+      "shape":"ellipse","size":[114,63],"color":"#2948BD",
+      "interaction":{
+        "actor":"NINA","hand":"left",
+        "attach_at":0,"release_at":2.5,
+        "landing":[1120,650],"contact_tolerance":24
+      }
+    }
+
+    {"clip":"reach","object":"blue_bowl","hand":"left",
+     "start":0,"end":2.5,"hold_last":true}
+
+The compositor draws ONE object instance: at its world starting point, then on the solved wrist during the attachment interval, then at the authored final landing point. The scene compiler checks release hand-to-landing distance to catch teleportation. Hand-held props do not change size at release by default. Original attachment remains supported. Foreground layers and actors/props sort by depth, as in the old compositor. Fine-grained per-finger masking still needs artist layers.
+
+Mouth movement is intentionally independent of the reusable talk-body gesture: ../voice.py performs Kokoro speech and Rhubarb alignment, and ../engine.py selects the actor's authored head-mouth PNG per timed cue. The six existing cast presets remain provisional performances; no synthesized/placeholder sound constitutes human approval.
+
+## 5. Quality gates and future clips
+
+Use original unit tests and new rig/foot checks:
+
+    python -m unittest discover -s tests -p 'test_*.py' -v
+    python -m unittest discover -s tests -p 'test_motion_clips.py' -v
+
+quality.joint_connections(pose) checks anatomical joins; quality.foot_sliding(actor,start,end,side) evaluates ACTUAL post-IK ankle movement during planted phases. Modern scene foot_lock reserves a small knee flexion to avoid nominally stationary foot targets being moved by unreachable IK. Legacy old singular action shots are unaffected by default.
+
+Use animation-friendly JSON values; scripts should not encode character identity or shot IDs into motion functions. If an animation cannot be expressed as existing actions, add a new well-tested general-purpose clip or generic channel once and reuse it.
+
+## 6. Rendering, caching and cost accounting
+
+Existing factory workflow: [.github/workflows/animation-factory.yml](../../../.github/workflows/animation-factory.yml).
+
+    python -m animation2d.episode03.scene_factory --scene animation2d/episode03/factory/scenes/SHOT_001.json --output build/factory/scene.json
+    python -m animation2d.episode03.preview --manifest build/factory/scene.json
+    python -m animation2d.episode03.factory_render prepare --manifest build/factory/scene.json --mode blocking
+    python -m animation2d.episode03.factory_render chunk --manifest build/factory/scene.json --mode blocking --start 0 --count 60 --output build/factory/chunks/part0
+    # Repeat for 60,120,180,240,300 in six GitHub Actions jobs
+    python -m animation2d.episode03.factory_render assemble --manifest build/factory/scene.json --mode blocking --chunks build/factory/chunks --output build/factory/final
+
+The content-addressed cache hashes scene JSON, rigs/PNG sprites, background, voice tracks and all renderer/kinematics/action/clip/camera sources. A repeated matching chunk can be reused, and mismatched or incomplete frames cannot assemble. Output is encoded through the existing FFmpeg flags with exact 24fps and 360 frames for the 15-second shot.
+
+Quality is determined by viewing the final output, actor expression, phonemes, contact, shadows/depth, continuity and manual approval, not by artifact existence. Existing frame preview, reference asset browser and QA reports remain available.
+
+## 7. Alternative renderers — gated decision
+
+Use [PySpine research](RESEARCH_PYSPINE.md) and the Pygame-ce benchmark:
+
+    python -m benchmark.pygame.compare prepare --output build/pygame-bench --mode blocking
+    python -m benchmark.pygame.compare render --backend pillow --output build/pygame-bench --mode blocking
+    python -m benchmark.pygame.compare render --backend pygame --output build/pygame-bench --mode blocking
+    python -m benchmark.pygame.compare report --output build/pygame-bench
+
+These are 1920x1080 24fps/360-frame paired outputs with the SAME scripted shot and Episode03 kitchen reference background. Blocking mode remains labelled as not final character artwork. Production mode refuses missing real transparent rigs and speech data. Pygame-ce is optional, not part of the working Pillow runtime. The renderer prototype shares Pillow camera crop and tiny prop source generation, so only qualified backend performance is measured.
+
+No migration is approved until a fully genuine paired SHOT_001, credible per-shot artist hours and human-reviewed visual quality show a meaningful improvement.
+
+## 8. Remaining production acceptance tasks
+
+- [ ] Approved 15-part transparent original character rigs for Dan, Maya and Nina, matched to their actual reference identities
+- [ ] Real transparent facial expression, eye/blink and Rhubarb viseme head layers
+- [ ] Approved 15-second performances containing the original Maya, Dan and Nina dialogue, with timing/cue QA and no clipping
+- [ ] Production render at 1920x1080/24fps, 360 frames, exact prop contact and occlusion
+- [ ] Manual QA of acting, motion continuity, foot planting, faces, camera, dialogue, art provenance and lighting
+- [ ] Honest production-art A/B before revisiting Pygame, Skia, Godot or PySpine runtime migration
+
+Until these items are supplied, a schematic shot or synthetic rig sample MUST NOT be represented as the finished Episode03 film.

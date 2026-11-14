@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 from .actions import ActionMixer
+from .camera_clips import validate_camera_tracks
 from .engine import REPO
 
 HERE = Path(__file__).resolve().parent
@@ -86,11 +87,14 @@ def compile_scene(manifest, scene, *, templates=None, root=REPO):
         shot.setdefault("camera", {}).update(deepcopy(camera))
     elif camera is not None:
         raise ValueError("camera must be a preset or parameter object")
+    if "camera_animation" in conf:
+        shot["camera_animation"] = deepcopy(conf["camera_animation"])
+    validate_camera_tracks(shot.get("camera_animation"), shot["duration"])
     for name, change in conf.get("actors", {}).items():
         if name not in shot["cast"]:
             raise ValueError(f"Action targets invisible actor {name}")
         if not isinstance(change, dict) or not set(change) <= {
-            "position", "scale", "depth", "actions", "action", "lean", "rig"
+            "position", "scale", "depth", "actions", "action", "lean", "rig", "foot_lock"
         }:
             raise ValueError(f"{name}: invalid actor parameters")
         defaults = {"position": [960, 650], "scale": .6, "depth": 100, "action": {"kind": "idle"}}

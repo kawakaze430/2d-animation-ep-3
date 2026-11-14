@@ -14,6 +14,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 from .kinematics import angle, camera_point, ease, ik, place, rot, walk_foot, wrist_angle
 from .actions import ActionMixer
+from .camera_clips import sample_camera
 
 REPO = Path(__file__).resolve().parents[2]
 CAST = ('DAN','MAYA','NINA','LEO','ELLA','MAX')
@@ -194,10 +195,21 @@ class Actor:
             bones['hand.'+side]=(wrist,hand_end)
             hip=point(self.anchors['hip_'+side])
             ground=root[1]+(self.anchors['hip_'+side][1]+self.lengths['thigh']+self.lengths['shin'])*scale
+            # A planted world-space target is only useful if both leg bones
+            # can actually reach it. The old straight-leg ground height
+            # exhausted IK reach and made solved ankles slide despite a
+            # mathematically planted walk_foot() target. Reserve some knee
+            # flexion in modern, data-driven scenes. Legacy shots stay intact.
+            foot_lock=placement.get('foot_lock', 'actions' in placement)
+            if type(foot_lock) is not bool:
+                raise ValueError('foot_lock must be boolean')
+            stride=(160 if motion.running else 96)
+            if foot_lock:
+                stride*=scale/.6  # gait adapts to rig scale rather than cast name
+                ground-=max(32*scale, (160*scale/.6)*.18)
             ankle=np.array([hip[0]+sign*10*scale,ground])
             if motion.walking:
-                ankle=walk_foot(root,self.anchors['hip_'+side][0],scale,side,ground,
-                                160 if motion.running else 96)
+                ankle=walk_foot(root,self.anchors['hip_'+side][0],scale,side,ground,stride)
             if motion.sitting:
                 seated=np.array([hip[0]+sign*165*scale,hip[1]+165*scale])
                 ankle=ankle*(1-motion.sitting)+seated*motion.sitting
@@ -353,13 +365,31 @@ def render_frame(manifest,shot_id,local_time,mode='blocking',size=(960,540),audi
             canvas.alpha_composite(fg,tuple(item.get('position',[0,0])))
         else:
             transform=HandTransform(np.array(item.get('position',[960,600]),dtype=float),float(item.get('rotation',0)),1)
-            attachment=item.get('attachment')
-            if attachment and attachment.get('start',0)<=local_time<attachment.get('end',duration):
-                name=attachment['actor']
-                if name not in actors:raise ValueError(f'Attachment references invisible actor {name}')
-                transform=attachment_transform(actors[name],local_time,attachment,duration)
+            interaction=item.get('interaction')
+            if interaction:
+                # Modern data-driven prop lifetime: one object, wrist-following
+                # while held, final grounded position after release.  This is
+                # shared by all characters and never replaces the legacy API.
+                name=interaction['actor']
+                if name not in actors:
+                    raise ValueError(f'Interaction references invisible actor {name}')
+                if local_time >= interaction['release_at']:
+                    transform=HandTransform(np.asarray(interaction['landing'],dtype=float),
+                                            float(item.get('rotation',0)),1)
+                elif local_time >= interaction['attach_at']:
+                    transform=attachment_transform(actors[name],local_time,interaction,duration)
+                    if not interaction.get('rotate_with_hand',False):
+                        transform.rotation=float(item.get('rotation',0))
+                    if not interaction.get('follow_actor_scale',False):
+                        transform.scale=1  # props retain size when gripped/released
+            else:
+                attachment=item.get('attachment')
+                if attachment and attachment.get('start',0)<=local_time<attachment.get('end',duration):
+                    name=attachment['actor']
+                    if name not in actors:raise ValueError(f'Attachment references invisible actor {name}')
+                    transform=attachment_transform(actors[name],local_time,attachment,duration)
             _draw_prop(canvas,item,transform,base)
-    camera=shot.get('camera',{})
+    camera=sample_camera(shot.get('camera',{}), shot.get('camera_animation'), local_time, duration)
     zoom=float(camera.get('zoom',1))
     camera_point([0,0],camera,size,canvas_size)  # Validate the same transform used by tests/UI.
     center=camera.get('center',[canvas.width/2,canvas.height/2])

@@ -24,6 +24,9 @@ class ReusableFactoryTests(unittest.TestCase):
                     "clip": clip, "start": 0, "end": 4, "hand": "left",
                     "target": [700, 530], "emotion": "happy",
                 }]}
+                if clip in ("keyframed", "pose"):
+                    placement["actions"][0]["source"] = (
+                        "greet" if clip == "keyframed" else "hold_tray")
                 s = ActionMixer(placement, 15).sample(2)
                 self.assertIn(clip, s.active)
                 self.assertTrue(np.isfinite(s.root).all())

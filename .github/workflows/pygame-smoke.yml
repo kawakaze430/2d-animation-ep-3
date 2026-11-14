@@ -1,0 +1,62 @@
+name: Lightweight PySpine-inspired motion and pygame-ce scene smoke
+
+on:
+  pull_request:
+    paths:
+      - 'animation2d/episode03/**'
+      - 'benchmark/pygame/**'
+      - 'tests/test_motion_clips.py'
+      - '.github/workflows/pygame-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pygame-sanity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  action-and-backend-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    env:
+      PYTHONPATH: .
+      SDL_VIDEODRIVER: dummy
+      PYGAME_HIDE_SUPPORT_PROMPT: '1'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Install existing Python dependencies and optional pinned pygame-ce
+        run: python -m pip install -r animation2d/project/requirements.txt 'pygame-ce==2.5.8'
+      - name: Test reusable pose, IK, actual foot planting, hand contact, camera, future character
+        run: python -m unittest discover -s tests -p 'test_motion_clips.py' -v
+      - name: Test actual EP03 shot via both backends at two sample times
+        run: |
+          python - <<'PY'
+          import hashlib
+          import json
+          from animation2d.episode03.engine import render_frame, production_readiness
+          from animation2d.episode03.scene_factory import compile_scene
+          from animation2d.episode03.factory_demo import manifest_for_demo
+          from benchmark.pygame.renderer import render_frame_pygame
+          from animation2d.episode03.engine import REPO
+          shot=compile_scene(REPO/'animation2d/episode03/shots.json',
+                             REPO/'animation2d/episode03/factory/scenes/SHOT_001.json')
+          assert len(production_readiness(shot,'SHOT_001')) == 3
+          for t in (0.5,5.5):
+              a=render_frame(shot,'SHOT_001',t,mode='blocking',size=(480,270))
+              b=render_frame_pygame(shot,'SHOT_001',t,mode='blocking',size=(480,270))
+              assert a.size==b.size==(480,270)
+              assert a.mode==b.mode=='RGB'
+              assert a.getbbox() and b.getbbox()
+              print('same shot',t,'Pillow hash',hashlib.sha256(a.tobytes()).hexdigest()[:16],
+                    'pygame hash',hashlib.sha256(b.tobytes()).hexdigest()[:16])
+          demo=manifest_for_demo(REPO/'animation2d/episode03/shots.json',named_motion='greet')
+          assert len(demo['shots'])==3
+          assert all(x['actors'][x['cast'][0]]['actions'][0]['source']=='greet'
+                     for x in demo['shots'])
+          print('Two real source scene samples and all three generic motion demonstrations passed')
+          PY

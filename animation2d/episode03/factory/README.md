@@ -1,5 +1,7 @@
 # Reusable 2D animation factory — production handoff
 
+**New v2 docs:** [PySpine v2 source/license audit](RESEARCH_PYSPINE.md) and [developer cookbook: normalized clips, three-character demonstration, camera, prop, audio, incremental render, acceptance](PRODUCTION_LIBRARY_GUIDE.md).
+
 This is a data-driven architecture built over the EXISTING Episode03 Python renderer. The original screenplay, continuity ledger, dialogue, IK and pivot transforms, character rig loader, lip cues, camera, props, depth sorting, preview server and FFmpeg renderer remain intact. No new Python module should be needed for a new shot.
 
 **Status:** the factory works in schematic blocking and has production asset/voice preflight, but a final SHOT_001 cannot yet be delivered: Dan, Maya and Nina still lack identity-matched transparent 15-part PNG rigs, suitable mouth and expression sprites, approved performance audio and creative QA. Reference JPEGs do not count as a rig.
