@@ -98,12 +98,10 @@ def compile_scene(manifest, scene, *, templates=None, root=REPO):
         actor.update(deepcopy(change))
         if "actions" in change:
             actor.pop("action", None)
-        ActionMixer(actor, shot["duration"])
         shot["actors"][name] = actor
     for actor in shot["cast"]:
         if actor not in shot["actors"]:
             raise ValueError(f"Visible actor {actor} missing placement")
-        ActionMixer(shot["actors"][actor], shot["duration"])
     props = {p["id"]: deepcopy(p) for p in shot.get("props", [])}
     for prop in conf.get("props", []):
         if not isinstance(prop, dict) or not isinstance(prop.get("id"), str):
@@ -114,26 +112,35 @@ def compile_scene(manifest, scene, *, templates=None, root=REPO):
             original.pop("attachment", None)  # modern interaction supersedes legacy binding
         if "file" in original:
             original["file"] = _resolve_asset(original["file"], Path(root))
-        interaction = original.get("interaction")
-        if interaction:
-            if interaction["actor"] not in shot["cast"] or interaction.get("hand", "right") not in ("left", "right"):
-                raise ValueError("Prop interaction must reference a visible actor and hand")
-            begin, end = interaction.get("attach_at"), interaction.get("release_at")
-            if not isinstance(begin, (int, float)) or not isinstance(end, (int, float)) or not 0 <= begin < end <= shot["duration"]:
-                raise ValueError("Prop interaction needs valid attach_at and release_at")
-            if "landing" not in interaction:
-                raise ValueError("Prop interaction requires a final landing position")
-            from .engine import Actor, attachment_transform
-            cast_actor = Actor(interaction["actor"], placement=shot["actors"][interaction["actor"]])
-            hand = attachment_transform(cast_actor, min(end, shot["duration"] - 1e-6),
-                                        interaction, shot["duration"])
-            landing = interaction["landing"]
-            distance = float(((hand.position[0]-landing[0])**2 +
-                              (hand.position[1]-landing[1])**2)**.5)
-            if distance > float(interaction.get("contact_tolerance", 24)):
-                raise ValueError(f"{prop['id']}: object would teleport {distance:.1f}px on release")
         props[prop["id"]] = original
     shot["props"] = list(props.values())
+
+    # Resolve object references after the COMPLETE prop set has been assembled.
+    # This permits new actor clips to target objects declared later in the JSON.
+    for actor in shot["cast"]:
+        ActionMixer(shot["actors"][actor], shot["duration"], objects=props)
+
+    for prop in shot["props"]:
+        interaction = prop.get("interaction")
+        if not interaction:
+            continue
+        if interaction["actor"] not in shot["cast"] or interaction.get("hand", "right") not in ("left", "right"):
+            raise ValueError("Prop interaction must reference a visible actor and hand")
+        begin, end = interaction.get("attach_at"), interaction.get("release_at")
+        if not isinstance(begin, (int, float)) or not isinstance(end, (int, float)) or not 0 <= begin < end <= shot["duration"]:
+            raise ValueError("Prop interaction needs valid attach_at and release_at")
+        if "landing" not in interaction:
+            raise ValueError("Prop interaction requires a final landing position")
+        from .engine import Actor, attachment_transform
+        cast_actor = Actor(interaction["actor"], placement=shot["actors"][interaction["actor"]],
+                           objects=props)
+        hand = attachment_transform(cast_actor, min(end, shot["duration"] - 1e-6),
+                                    interaction, shot["duration"])
+        landing = interaction["landing"]
+        distance = float(((hand.position[0]-landing[0])**2 +
+                          (hand.position[1]-landing[1])**2)**.5)
+        if distance > float(interaction.get("contact_tolerance", 24)):
+            raise ValueError(f"{prop['id']}: object would teleport {distance:.1f}px on release")
     if "foreground" in conf:
         shot["foreground"] = deepcopy(conf["foreground"])
     shot["blocking_authored"] = True
