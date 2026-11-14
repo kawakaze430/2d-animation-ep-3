@@ -30,6 +30,8 @@ jobs:
           git -C third_party/rigby2d checkout -q --detach FETCH_HEAD
           test "$(git -C third_party/rigby2d rev-parse HEAD)" = "$RIGBY_SHA"
           node third_party/rigby2d/src/mcp/server.js --help
+      - name: Static-check production Rigby export driver
+        run: node --check benchmark/shot001/rigby.mjs
       - name: Generate 12 genuine Rigby skeletal PNG frames from test-only art
         run: |
           node benchmark/shot001/smoke.mjs third_party/rigby2d build/shot001/smoke
