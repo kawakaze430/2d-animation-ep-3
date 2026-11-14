@@ -53,6 +53,9 @@ def load_contract() -> tuple[dict, dict]:
     shot["actors"]["NINA"]["action"].update({"kind": "reach", "hand": "left", "start": 0, "end": 2.5})
     shot["actors"]["DAN"]["action"].update({"kind": "gesture", "hand": "right", "start": 2.72, "end": 7.27})
     for prop in shot["props"]:
+        if prop["id"] in ("recipe_card", "blue_bowl"):
+            prop["attachment"]["offset"] = [0, 0]  # exact release contact, no teleport
+    for prop in shot["props"]:
         if prop["id"] == "blue_bowl":
             prop.update({"shape": "ellipse", "size": [115, 65], "color": "#2447B9"})
         elif prop["id"] == "yellow_bowl":
@@ -61,7 +64,7 @@ def load_contract() -> tuple[dict, dict]:
             prop.update({"shape": "rectangle", "size": [85, 105], "color": "#F1ECE4"})
     shot["props"].append({"id": "recipe_stand", "shape": "rectangle",
                           "size": [105, 15], "color": "#73513A",
-                          "position": [590, 680], "depth": 202})
+                          "position": [590, 665], "depth": 202})
     data["__base_dir__"] = str(ROOT)
     return data, shot
 
