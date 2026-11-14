@@ -28,3 +28,36 @@ a{color:#8ab9ff;font-size:13px}.timeline{border:1px solid #344156;border-radius:
 .inspector button.primary,.inspector button.danger{margin-top:13px;width:100%}.diagnostics{border-top:1px solid #344156;padding-top:14px}
 @media(max-width:980px){.workspace{grid-template-columns:170px minmax(280px,1fr)}.inspector{grid-column:1/-1;border-left:0;border-top:1px solid #293647}.inspector label{display:inline-flex;width:30%;margin-right:2%}}
 @media(max-width:620px){.workspace{display:block}.sidebar,.inspector{border:0;border-bottom:1px solid #293647}main{padding:12px}.toolbar small{display:none}.viewport{min-height:200px}.transport{gap:7px}}
+
+/* Rig authoring panel: existing native Canvas overlay for draggable control points.
+   All exported poses still come from Python. No copied Konva code or CDN dependency. */
+#openRigStudio{width:100%;text-align:left}
+#rigDialog{border:1px solid #3b5275;border-radius:14px;color:#e9f1ff;background:#121c2b;
+ width:min(1220px,97vw);max-width:none;max-height:94vh;padding:18px;overflow:auto}
+#rigDialog::backdrop{background:#010711d9}
+.rig-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;border-bottom:1px solid #314462;padding-bottom:10px}
+.rig-head h2{font-size:19px;margin:0}
+.rig-grid{display:grid;grid-template-columns:260px minmax(350px,1fr);gap:20px}
+.rig-grid>section{margin-top:13px;min-width:0}
+.rig-grid label{font-size:12px;color:#c0d0e7;display:flex;flex-direction:column;gap:6px;margin:8px 0}
+.rig-grid input:not([type=checkbox]):not([type=file]),.rig-grid select{width:100%}
+#rigDropZone{padding:16px;background:#1a2b41;border:2px dashed #4e7aca;border-radius:10px;
+ cursor:pointer;text-align:center;font-size:13px;line-height:1.6;outline-offset:3px}
+#rigDropZone.dragover{background:#243a59;border-color:#82baff}
+#rigDropZone label{display:inline;color:#9bbfff;cursor:pointer}
+#rigFiles{width:100%;margin-top:9px;font-size:11px}
+.rig-import-list{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-height:290px;overflow:auto}
+.rig-import-list .item{border:1px solid #2d4262;background:#162238;border-radius:8px;padding:4px;font-size:10px;min-width:0;word-break:break-word}
+.rig-import-list img{height:58px;width:100%;object-fit:contain;background:repeating-conic-gradient(#25364b 0 25%,#1d2d43 0 50%) 50%/12px 12px}
+.rig-import-list .missing{color:#ffb0aa}
+.rig-row{display:flex;align-items:end;flex-wrap:wrap;gap:10px;margin-top:12px}
+.rig-row>label{flex:1;min-width:90px}
+.rig-row>button{margin-bottom:8px}
+.rig-canvas-grid{display:grid;grid-template-columns:minmax(230px,1fr) minmax(260px,1fr);gap:14px}
+.rig-full{background:#d2d2cb;width:100%;height:auto;max-height:360px;object-fit:contain;border:1px solid #3b5275;border-radius:10px}
+#rigPartCanvas{width:100%;height:auto;background:#2a3443;touch-action:none;border:1px solid #3b5275;border-radius:10px;cursor:crosshair}
+.rig-controls{align-items:end}
+#rigWarnings{margin-top:16px;color:#f4c7a3;white-space:pre-line}
+#rigStatus{font-weight:600;min-height:1.5em}
+@media(max-width:900px){.rig-grid{grid-template-columns:1fr}.rig-canvas-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:560px){.rig-canvas-grid{grid-template-columns:1fr}#rigDialog{padding:9px}.rig-import-list{grid-template-columns:repeat(4,1fr)}}
