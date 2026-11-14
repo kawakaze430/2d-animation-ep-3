@@ -1,0 +1,64 @@
+name: SHOT_001 Version A - Python only
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  python_only:
+    name: Version A - Pillow + NumPy IK + FFmpeg
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      PYTHONUNBUFFERED: '1'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - name: Record runner start
+        run: |
+          mkdir -p build/shot001/version-a
+          date -u +%Y-%m-%dT%H:%M:%S.%NZ > build/shot001/version-a/runner_start.txt
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+      - name: Install identical scene renderer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg time
+          python -m pip install -r animation2d/project/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          name: shot001-shared-master
+          path: build/shot001/shared_audio
+      - name: Fail-closed production rig and shared audio preflight
+        run: python -m benchmark.shot001.common --audio-dir build/shot001/shared_audio
+      - name: Render and encode 360 genuine Episode 03 frames
+        shell: bash
+        run: |
+          /usr/bin/time -v -o build/shot001/version-a/process-resource.txt \
+            python -m benchmark.shot001.render \
+              --version python \
+              --audio-dir build/shot001/shared_audio \
+              --output build/shot001/version-a
+      - name: Close runner measurement and collect source metadata
+        if: always()
+        run: |
+          date -u +%Y-%m-%dT%H:%M:%S.%NZ > build/shot001/version-a/runner_end.txt
+          git rev-parse HEAD > build/shot001/version-a/revision.txt
+          python --version > build/shot001/version-a/python-version.txt 2>&1
+          ffmpeg -version > build/shot001/version-a/ffmpeg-version.txt 2>&1
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: SHOT_001-Version-A
+          path: |
+            build/shot001/version-a/
+            benchmark/shot001/
+            animation2d/episode03/shots.json
+            animation2d/episode03/characters.json
+            Episode_03/ANIMATION_2D.md
+          if-no-files-found: warn
+          retention-days: 30
