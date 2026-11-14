@@ -42,12 +42,12 @@ jobs:
           python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
           python -m pip install 'kokoro==0.9.4' 'transformers<5' soundfile espeakng-loader phonemizer 'huggingface_hub>=0.25,<1'
           python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
-      - name: Download verified model and three selected voice tensors
+      - name: Download verified model and six configured voice tensors (three used in this shot)
         id: voice
         run: |
           python tools/setup_voice.py \
             --output build/shot001/voice-tools \
-            --voices af_heart af_bella am_michael \
+            --voices af_heart af_bella af_nova am_michael am_fenrir am_puck \
             --github-output "$GITHUB_OUTPUT"
       - name: Synthesize ONLY the SHOT_001 original three lines once
         env:
