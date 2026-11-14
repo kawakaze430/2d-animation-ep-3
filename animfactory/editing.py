@@ -136,6 +136,23 @@ class EditSession:
         self.redo_stack.clear()
         return deepcopy(self.project.doc)
 
+    def record_external(self, before):
+        """Join a committed immutable rig pointer edit to timeline undo/redo.
+
+        Caller must validate and save the asset revision BEFORE recording.
+        The original and edited rig JSON files remain immutable on disk.
+        """
+        validate_project(before)
+        self.undo_stack.append(deepcopy(before))
+        if len(self.undo_stack) > self.limit:
+            self.undo_stack.pop(0)
+        self.redo_stack.clear()
+
+    def reset(self):
+        """Imports add immutable art files; never undo their registry blindly."""
+        self.undo_stack.clear()
+        self.redo_stack.clear()
+
     def undo(self, *, save=True):
         if not self.can_undo:
             raise ValueError("Nothing to undo")
