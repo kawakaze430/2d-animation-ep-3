@@ -97,8 +97,10 @@ class PreviewProject:
     def browser_manifest(self, *, static=False):
         result = deepcopy(self.manifest)
         result.pop('__base_dir__', None)
+        from .actions import LIBRARY
         result['_preview'] = {
             'mode': self.mode,
+            'action_library': list(LIBRARY),
             'static': static,
             'sample_times': [0, 7.5, 15 - 1 / 24],
             'asset_urls': self.asset_urls,
