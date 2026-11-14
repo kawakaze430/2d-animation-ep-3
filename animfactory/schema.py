@@ -128,6 +128,13 @@ def validate_project(source):
             _fail(f"{cid}: tags must be strings")
     from animation2d.episode03.motion_clips import ClipLibrary
     ClipLibrary(source["motion_library"])
+    from .states import validate_graph, compile_machine
+    machines = source["motion_library"].get("machines", {})
+    if not isinstance(machines, dict) or len(machines)>256:
+        _fail("Motion library machines must be a small named registry")
+    for name, graph in machines.items():
+        valid_id(name, "state graph ID")
+        validate_graph(graph)
 
     scenes = source["scenes"]
     if not isinstance(scenes, list):
@@ -173,6 +180,8 @@ def validate_project(source):
             point(actor.get("position"), f"{sid}/{actor_id}.position")
             number(actor.get("scale", 1), f"{sid}/{actor_id}.scale", .01, 100)
             number(actor.get("depth", 100), f"{sid}/{actor_id}.depth")
+            if "machine" in actor:
+                compile_machine(actor["machine"], source["motion_library"], fps, length)
             tracks = actor.get("actions")
             if not isinstance(tracks, list):
                 _fail(f"{sid}/{actor_id}: actions must be array")
@@ -275,7 +284,10 @@ def validate_project(source):
                     if flag in binding and type(binding[flag]) is not bool:
                         _fail(f"{pid}: {flag} must be boolean")
         for actor in actors:
-            for action in actor["actions"]:
+            actions = list(actor["actions"])
+            if "machine" in actor:
+                actions += compile_machine(actor["machine"],source["motion_library"],fps,length)
+            for action in actions:
                 if "object" in action and action["object"] not in prop_ids:
                     _fail(f"{sid}: action references missing prop ID")
         dialogue = scene.get("dialogue", [])
