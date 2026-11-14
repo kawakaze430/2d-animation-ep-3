@@ -125,7 +125,10 @@ class Project:
         initial = empty_project(project_id, title, canvas=canvas, fps=fps)
         motions = json.loads(DEFAULT_LIBRARY.read_text(encoding="utf-8"))
         initial["motion_library"] = {
-            "version": 1, "clips": motions["clips"], "poses": motions["poses"]
+            "version": 1, "clips": motions["clips"], "poses": motions["poses"],
+            "machines": {"basic_interaction": json.loads(
+                (Path(__file__).parent / "presets/basic_interaction.json").read_text(
+                    encoding="utf-8"))},
         }
         project = cls(directory, initial)
         project.save()
@@ -253,6 +256,31 @@ class Project:
         self.doc = validate_project(updated)
         self.save()
 
+    def add_machine(self, name, graph):
+        """Register a versioned reusable graph, independent of any actor."""
+        from .states import validate_graph
+        valid_id(name, "machine name")
+        updated = deepcopy(self.doc)
+        registry = updated["motion_library"].setdefault("machines", {})
+        if name in registry:
+            raise FileExistsError(f"State graph already exists: {name}")
+        registry[name] = validate_graph(graph)
+        self.doc = validate_project(updated)
+        self.save()
+
+    def set_actor_machine(self, scene_id, actor_id, machine):
+        """Attach one named state schedule to an actor; original actions remain."""
+        updated = deepcopy(self.doc)
+        scene = next((s for s in updated["scenes"] if s["id"]==scene_id), None)
+        if scene is None:
+            raise ValueError("Unknown scene")
+        actor = next((a for a in scene["actors"] if a["id"]==actor_id), None)
+        if actor is None:
+            raise ValueError("Unknown actor")
+        actor["machine"] = deepcopy(machine)
+        self.doc = validate_project(updated)
+        self.save()
+
     def add_scene(self, scene_id, frames, *, camera=None):
         valid_id(scene_id, "scene ID")
         if type(frames) is not int or frames < 1:
@@ -324,6 +352,11 @@ class Project:
                 selected["start"] = action["start_frame"] / fps
                 selected["end"] = action["end_frame"] / fps
                 actions.append(selected)
+            if "machine" in instance:
+                from .states import compile_machine
+                actions.extend(compile_machine(instance["machine"],
+                                               doc["motion_library"], fps,
+                                               scene["frames"]))
             actors[instance_id] = {
                 "position": instance["position"], "scale": instance.get("scale", 1),
                 "depth": instance.get("depth", 100), "foot_lock": True,

@@ -68,6 +68,14 @@ create a new overall license nor silently switch renderer/provider.
 
 ## Milestone 3: scalable animation authoring and registry
 
+- [x] Versioned project-owned reusable state graph templates with replace
+  and bounded overlay events, allowed transitions, strict frame schedules,
+  optional existing ActionMixer blend, per-actor parameters and stable random
+  frame access (issue #7, partial). Basic idle/walk/reach/hold/release template
+  and public CLI; tested with two characters and shuffled render frame order.
+- [ ] Transition tooling remains JSON/CLI, not yet a state-node browser editor;
+  full per-limb blend masks, advanced retarget maps and production-quality
+  two-handed interaction remain open in issue #7.
 - [x] Browser keyframed clip authoring (issue #6): create/duplicate named
   reusable sources, drag normalized key points, add/remove channels and keys,
   choose smooth/linear/step, duration and loop flag, save via existing versioned

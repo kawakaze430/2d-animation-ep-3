@@ -117,6 +117,17 @@ def main(argv=None):
     motion.add_argument("json_file", type=Path)
     motion.add_argument("--pose", action="store_true")
 
+    machine = commands.add_parser("add-machine", help="Register a reusable JSON state graph")
+    machine.add_argument("project", type=Path)
+    machine.add_argument("id")
+    machine.add_argument("json_file", type=Path)
+
+    attach = commands.add_parser("set-machine", help="Assign a state event schedule to an actor")
+    attach.add_argument("project", type=Path)
+    attach.add_argument("scene")
+    attach.add_argument("actor")
+    attach.add_argument("json_file", type=Path)
+
     sc = commands.add_parser("add-scene", help="Create a shot-free scene and camera")
     sc.add_argument("project", type=Path)
     sc.add_argument("id")
@@ -191,6 +202,14 @@ def main(argv=None):
             definition = json.loads(args.json_file.read_text())
             project.add_motion(args.id, definition, pose=args.pose)
             result = {"motion": args.id}
+        elif args.command == "add-machine":
+            graph = json.loads(args.json_file.read_text(encoding="utf-8"))
+            project.add_machine(args.id, graph)
+            result = {"machine": args.id}
+        elif args.command == "set-machine":
+            schedule = json.loads(args.json_file.read_text(encoding="utf-8"))
+            project.set_actor_machine(args.scene, args.actor, schedule)
+            result = {"actor": args.actor, "machine": schedule.get("source")}
         elif args.command == "add-scene":
             project.add_scene(args.id, args.frames)
             result = {"scene": args.id, "frames": args.frames}
