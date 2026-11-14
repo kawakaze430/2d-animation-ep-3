@@ -255,11 +255,25 @@ class Actor:
             if bone not in ('head','pelvis'):
                 width=max(3,round((30 if bone=='torso' else 12)*scale))
                 d.line([tuple(a),tuple(b)],fill=color,width=width)
-        neck=pose['neck'];center=neck+np.array([0,-49*scale]);rx,ry=35*scale,45*scale
+        neck=pose['neck']
+        head_a,head_b=pose['bones']['head']
+        head_angle=angle(head_b-head_a)
+        center=neck+rot([0,-49*scale],head_angle)
+        rx,ry=35*scale,45*scale
         d.ellipse((center[0]-rx,center[1]-ry,center[0]+rx,center[1]+ry),fill='#EBDCC6',outline=color,width=max(2,round(4*scale)))
+        offset=(CAST.index(self.name) if self.name in CAST else int(hashlib.sha256(self.name.encode()).hexdigest()[:4],16)%11)
+        blinking=pose['blink'] if pose['blink'] is not None else ((t+offset*.61)%4.1)<.12
+        gaze=np.zeros(2)
+        if pose['look'] is not None:
+            toward=np.asarray(pose['look'],dtype=float)-center
+            gaze=np.clip(toward/max(10,100*scale),-1,1)*2*scale
         for sign in (-1,1):
-            eye=center+np.array([sign*12*scale,-7*scale])
-            d.ellipse((eye[0]-2,eye[1]-2,eye[0]+2,eye[1]+2),fill='#2A3033')
+            eye=center+rot([sign*12*scale,-7*scale],head_angle)
+            if blinking:
+                d.line((eye[0]-4*scale,eye[1],eye[0]+4*scale,eye[1]),fill='#2A3033',width=max(1,round(2*scale)))
+            else:
+                eye=eye+gaze
+                d.ellipse((eye[0]-2,eye[1]-2,eye[0]+2,eye[1]+2),fill='#2A3033')
         y=center[1]+17*scale
         if pose['mouth']=='X' and pose.get('emotion') in ('happy','excited'):
             d.arc((center[0]-10*scale,y-10*scale,center[0]+10*scale,y+7*scale),0,180,fill='#643E39',width=2)
