@@ -4,7 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/factory-15s-pilot.yml']
+    paths:
+      - '.github/workflows/factory-15s-pilot.yml'
+      - 'animation2d/episode03/factory/scenes/SHOT_001.json'
 
 permissions:
   contents: read
