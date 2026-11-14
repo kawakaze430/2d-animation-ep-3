@@ -45,6 +45,8 @@ jobs:
         run: |
           python -m animation2d.episode03.manifest --check
           python -m animation2d.episode03.voice --manifest animation2d/episode03/shots.json --shot all --validate
+      - name: Validate independent browser studio JavaScript syntax
+        run: node --check animfactory/web/app.js
       - name: Test validators and real 2D frames, motion, media encoding
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Test renderer geometry, hand contact and cache
