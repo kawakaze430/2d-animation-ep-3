@@ -59,6 +59,13 @@ def _resolve_parent(doc, path):
 
 def apply_command(doc, command):
     """Pure function returning a new validated project; never mutates input."""
+    if isinstance(command, dict) and command.get("op") == "batch":
+        if set(command) != {"op", "commands"} or not isinstance(command["commands"], list) or not 1 <= len(command["commands"]) <= 20:
+            raise ValueError("Batch edit must have 1..20 commands")
+        updated = deepcopy(doc)
+        for item in command["commands"]:
+            updated = apply_command(updated, item)
+        return updated
     if not isinstance(command, dict) or set(command) - {"op", "path", "value"}:
         raise ValueError("Expected JSON editor command op/path/value")
     op = command.get("op")
