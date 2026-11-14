@@ -41,6 +41,10 @@ jobs:
         run: python Episode_03/check.py
       - name: Reject stale generated handoff
         run: python Episode_03/sync.py --check
+      - name: Check Episode 03 shot manifest and separate voice timelines
+        run: |
+          python -m animation2d.episode03.manifest --check
+          python -m animation2d.episode03.voice --manifest animation2d/episode03/shots.json --shot all --validate
       - name: Test validators and real 2D frames, motion, media encoding
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Test renderer geometry, hand contact and cache

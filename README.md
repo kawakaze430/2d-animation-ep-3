@@ -31,10 +31,12 @@ and Rhubarb cues without model downloads. Choose **kokoro** to regenerate speech
 Episode **02** requires **kokoro**, because its dialogue differs from the original.
 Voice/model downloads use public official sources; no personal API key is required.
 
-Episode 03's six JPG character references are not separated animation rigs.
-The render job currently supports the original film and Episode 02. It does not
-relabel the original character or teaching routine as the Brooks family movie.
-Episode 03 needs its own six character-part sets and 15-second scene implementation.
+Episode 03 has a separate [browser review and shot-preview action](https://github.com/kawakaze430/2d-animation-ep-3/actions/workflows/episode03-preview.yml)
+and [multi-actor engine](animation2d/episode03/README.md), with all 80 shots and
+240 exact dialogue turns. It can export labelled schematic blocking; production
+requires six reference-matched transparent character-part rigs and reviewed acting.
+The six JPG sheets remain references. Detailed motion and performed voices are
+pending; the original teaching routine is never relabelled as the family movie.
 
 Run the contribution checks locally with Python 3.11/3.12 and FFmpeg installed:
 

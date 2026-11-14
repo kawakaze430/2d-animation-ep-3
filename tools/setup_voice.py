@@ -19,6 +19,7 @@ import zipfile
 
 MODEL_REPO = 'hexgrad/Kokoro-82M'
 MODEL_FILES = ('config.json', 'kokoro-v1_0.pth', 'voices/af_heart.pt')
+VOICE_PRESETS = ('af_heart', 'af_bella', 'af_nova', 'am_michael', 'am_fenrir', 'am_puck')
 RHUBARB_NAME = 'Rhubarb-Lip-Sync-1.14.0-Linux.zip'
 RHUBARB_URL = f'https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v1.14.0/{RHUBARB_NAME}'
 # Baseline from the official HTTPS release, independently rechecked on downloads.
@@ -94,7 +95,14 @@ def install_rhubarb(output: Path) -> Path:
         return executable.resolve()
 
 
-def install_models(output: Path) -> dict:
+def model_files(voices=('af_heart',)):
+    if not voices or any(voice not in VOICE_PRESETS for voice in voices):
+        raise ValueError('Select supported Kokoro voice presets')
+    return ('config.json', 'kokoro-v1_0.pth', *(f'voices/{voice}.pt' for voice in dict.fromkeys(voices)))
+
+
+def install_models(output: Path, voices=('af_heart',)) -> dict:
+    files = model_files(voices)
     from huggingface_hub import HfApi, hf_hub_download
 
     info = HfApi().model_info(MODEL_REPO, files_metadata=True, token=False)
@@ -106,7 +114,7 @@ def install_models(output: Path) -> dict:
     siblings = {item.rfilename: item for item in info.siblings}
     output.mkdir(parents=True, exist_ok=True)
     report = {'repository': MODEL_REPO, 'revision': revision, 'files': {}}
-    for name in MODEL_FILES:
+    for name in files:
         item = siblings[name]
         cached = Path(hf_hub_download(MODEL_REPO, name, revision=revision, token=False))
         lfs = getattr(item, 'lfs', None)
@@ -130,11 +138,12 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=Path('build/voice'))
     parser.add_argument('--github-output', type=Path)
+    parser.add_argument('--voices', nargs='+', choices=VOICE_PRESETS, default=['af_heart'])
     args = parser.parse_args()
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     models = output / 'models'
-    report = install_models(models)
+    report = install_models(models, args.voices)
     executable = install_rhubarb(output)
     report['rhubarb'] = {'url': RHUBARB_URL, 'sha256': RHUBARB_SHA256,
                          'checksum_provenance': 'baseline of official HTTPS release bytes'}

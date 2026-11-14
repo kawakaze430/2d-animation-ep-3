@@ -1,0 +1,141 @@
+name: Episode 03 browser review and shot preview
+
+on:
+  push:
+    branches: [work]
+    paths:
+      - 'animation2d/episode03/**'
+      - '.github/workflows/episode03-preview.yml'
+  workflow_dispatch:
+    inputs:
+      shot:
+        description: 'Shot ID, SHOT_001 through SHOT_080'
+        type: string
+        default: SHOT_001
+      mode:
+        description: 'Blocking uses labelled schematic actors; production requires real part rigs'
+        type: choice
+        options: [blocking, production]
+        default: blocking
+      dialogue:
+        description: 'Silent blocking or six separately cast Kokoro voices with actor lip-sync'
+        type: choice
+        options: [silent, kokoro]
+        default: silent
+
+permissions:
+  contents: read
+
+concurrency:
+  group: episode03-${{ github.ref }}-${{ inputs.shot || 'SHOT_001' }}-${{ inputs.mode || 'blocking' }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      SHOT: ${{ inputs.shot || 'SHOT_001' }}
+      MODE: ${{ inputs.mode || 'blocking' }}
+      DIALOGUE: ${{ inputs.dialogue || 'silent' }}
+      PYTHONUNBUFFERED: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      HF_HUB_DISABLE_TELEMETRY: '1'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: animation2d/project/requirements.txt
+      - name: Install image and media tools
+        shell: bash
+        run: |
+          mkdir -p build/episode03/logs
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y ffmpeg
+          python -m pip install -r animation2d/project/requirements.txt
+      - name: Validate source and preflight the requested shot
+        shell: bash
+        run: |
+          python Episode_03/check.py 2>&1 | tee build/episode03/logs/story.log
+          python -m animation2d.episode03.manifest --check 2>&1 | tee build/episode03/logs/manifest.log
+          python - <<'PY' 2>&1 | tee build/episode03/logs/preflight.log
+          import json, os, re
+          from pathlib import Path
+          from animation2d.episode03.engine import render_frame
+          shot, mode, dialogue = os.environ['SHOT'], os.environ['MODE'], os.environ['DIALOGUE']
+          if not re.fullmatch(r'SHOT_0(?:[0-7][0-9]|80)', shot) or shot == 'SHOT_000':
+              raise SystemExit('Choose SHOT_001 through SHOT_080')
+          if mode not in ('blocking', 'production') or dialogue not in ('silent', 'kokoro'):
+              raise SystemExit('Unsupported preview settings')
+          if mode == 'production' and dialogue != 'kokoro':
+              raise SystemExit('Production requires generated speech; silent output is blocking only')
+          manifest = json.loads(Path('animation2d/episode03/shots.json').read_text())
+          manifest['__base_dir__'] = str(Path.cwd())
+          render_frame(manifest,shot,0,mode=mode,size=(480,270))
+          Path('build/episode03/selection.json').write_text(json.dumps(dict(shot=shot,mode=mode,dialogue=dialogue,source_commit=os.environ['GITHUB_SHA']),indent=2))
+          PY
+      - name: Generate the browser review gallery
+        shell: bash
+        run: |
+          python -m animation2d.episode03.preview --manifest animation2d/episode03/shots.json --export build/episode03/review 2>&1 | tee build/episode03/logs/review.log
+      - name: Cache official model downloads
+        if: inputs.dialogue == 'kokoro'
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.cache/huggingface/hub
+          key: kokoro-six-voices-${{ runner.os }}-${{ hashFiles('tools/setup_voice.py') }}
+      - name: Install Kokoro CPU speech dependencies
+        if: inputs.dialogue == 'kokoro'
+        shell: bash
+        run: |
+          sudo apt-get install --no-install-recommends -y espeak-ng libespeak-ng1
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install 'kokoro==0.9.4' 'transformers<5' soundfile espeakng-loader phonemizer 'huggingface_hub>=0.25,<1'
+          python -m pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl
+      - name: Download verified models and all six voice presets
+        if: inputs.dialogue == 'kokoro'
+        id: voice
+        shell: bash
+        run: |
+          python tools/setup_voice.py --output build/episode03/voice-tools --voices af_heart af_bella af_nova am_michael am_fenrir am_puck --github-output "$GITHUB_OUTPUT" 2>&1 | tee build/episode03/logs/voice-tools.log
+      - name: Generate separate speaker tracks and Rhubarb cues
+        if: inputs.dialogue == 'kokoro'
+        shell: bash
+        env:
+          MODELS: ${{ steps.voice.outputs.model_dir }}
+          RHUBARB: ${{ steps.voice.outputs.rhubarb }}
+        run: |
+          python -m animation2d.episode03.voice --manifest animation2d/episode03/shots.json --shot "$SHOT" --models "$MODELS" --rhubarb "$RHUBARB" --output build/episode03/audio 2>&1 | tee build/episode03/logs/speech.log
+      - name: Export and inspect the selected 15-second MP4
+        shell: bash
+        run: |
+          python -m animation2d.episode03.render --manifest animation2d/episode03/shots.json --shot "$SHOT" --mode "$MODE" --audio-dir build/episode03/audio --output build/episode03/video 2>&1 | tee build/episode03/logs/render.log
+      - name: Collect revision and tool diagnostics
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p build/episode03/logs
+          git rev-parse HEAD > build/episode03/logs/source-commit.txt
+          python --version > build/episode03/logs/python.txt 2>&1
+          if command -v ffmpeg >/dev/null; then ffmpeg -version > build/episode03/logs/ffmpeg.txt 2>&1; fi
+      - name: Upload browser gallery, clip, dialogue, state and review evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: Episode03-${{ inputs.shot || 'SHOT_001' }}-${{ inputs.mode || 'blocking' }}-${{ github.run_id }}
+          path: |
+            build/episode03/review/
+            build/episode03/video/
+            build/episode03/audio/
+            build/episode03/logs/
+            build/episode03/selection.json
+            build/episode03/voice-tools/verified_downloads.json
+            animation2d/episode03/shots.json
+            animation2d/episode03/characters.json
+            Episode_03/ANIMATION_2D.md
+          if-no-files-found: error
+          retention-days: 14

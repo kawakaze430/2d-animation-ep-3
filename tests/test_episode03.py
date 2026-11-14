@@ -22,8 +22,10 @@ class Episode03ValidationTests(unittest.TestCase):
         self.episode = self.root / 'Episode_03'
         shutil.copytree(ROOT / 'Episode_03', self.episode, ignore=shutil.ignore_patterns('__pycache__'))
         # The episode's production handoff links to the real shared pipeline guide.
-        (self.root / 'animation2d').mkdir()
-        shutil.copy2(ROOT / 'animation2d/README.md', self.root / 'animation2d/README.md')
+        for guide in (ROOT / 'animation2d').rglob('*.md'):
+            target = self.root / guide.relative_to(ROOT)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(guide, target)
 
     def mutate_text(self, relative, old, new):
         path = self.episode / relative

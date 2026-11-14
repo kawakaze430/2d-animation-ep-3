@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "characters": {
+    "DAN": {
+      "id": "DAN",
+      "display_name": "Dan Brooks",
+      "voice": {
+        "engine": "kokoro",
+        "preset": "am_michael",
+        "speed": 0.94,
+        "language": "a",
+        "status": "distinct preset selected; performed voice not yet reviewed"
+      },
+      "reference": {
+        "portrait": "Episode_03/assets/characters/DAN_portrait.jpg",
+        "sheet": "Episode_03/assets/characters/DAN_sheet.jpg"
+      },
+      "rig": "Episode_03/assets/rigs/DAN/rig.json",
+      "production_status": "reference only; separated production rig required",
+      "default_scale": 0.6
+    },
+    "MAYA": {
+      "id": "MAYA",
+      "display_name": "Maya Brooks",
+      "voice": {
+        "engine": "kokoro",
+        "preset": "af_heart",
+        "speed": 0.97,
+        "language": "a",
+        "status": "distinct preset selected; performed voice not yet reviewed"
+      },
+      "reference": {
+        "portrait": "Episode_03/assets/characters/MAYA_portrait.jpg",
+        "sheet": "Episode_03/assets/characters/MAYA_sheet.jpg"
+      },
+      "rig": "Episode_03/assets/rigs/MAYA/rig.json",
+      "production_status": "reference only; separated production rig required",
+      "default_scale": 0.6
+    },
+    "NINA": {
+      "id": "NINA",
+      "display_name": "Nina Brooks",
+      "voice": {
+        "engine": "kokoro",
+        "preset": "af_bella",
+        "speed": 0.96,
+        "language": "a",
+        "status": "distinct preset selected; performed voice not yet reviewed"
+      },
+      "reference": {
+        "portrait": "Episode_03/assets/characters/NINA_portrait.jpg",
+        "sheet": "Episode_03/assets/characters/NINA_sheet.jpg"
+      },
+      "rig": "Episode_03/assets/rigs/NINA/rig.json",
+      "production_status": "reference only; separated production rig required",
+      "default_scale": 0.6
+    },
+    "LEO": {
+      "id": "LEO",
+      "display_name": "Leo Brooks",
+      "voice": {
+        "engine": "kokoro",
+        "preset": "am_fenrir",
+        "speed": 1.03,
+        "language": "a",
+        "status": "distinct preset selected; performed voice not yet reviewed"
+      },
+      "reference": {
+        "portrait": "Episode_03/assets/characters/LEO_portrait.jpg",
+        "sheet": "Episode_03/assets/characters/LEO_sheet.jpg"
+      },
+      "rig": "Episode_03/assets/rigs/LEO/rig.json",
+      "production_status": "reference only; separated production rig required",
+      "default_scale": 0.45
+    },
+    "ELLA": {
+      "id": "ELLA",
+      "display_name": "Ella Brooks",
+      "voice": {
+        "engine": "kokoro",
+        "preset": "af_nova",
+        "speed": 1.02,
+        "language": "a",
+        "status": "distinct preset selected; performed voice not yet reviewed"
+      },
+      "reference": {
+        "portrait": "Episode_03/assets/characters/ELLA_portrait.jpg",
+        "sheet": "Episode_03/assets/characters/ELLA_sheet.jpg"
+      },
+      "rig": "Episode_03/assets/rigs/ELLA/rig.json",
+      "production_status": "reference only; separated production rig required",
+      "default_scale": 0.45
+    },
+    "MAX": {
+      "id": "MAX",
+      "display_name": "Max Brooks",
+      "voice": {
+        "engine": "kokoro",
+        "preset": "am_puck",
+        "speed": 1.05,
+        "language": "a",
+        "status": "distinct preset selected; performed voice not yet reviewed"
+      },
+      "reference": {
+        "portrait": "Episode_03/assets/characters/MAX_portrait.jpg",
+        "sheet": "Episode_03/assets/characters/MAX_sheet.jpg"
+      },
+      "rig": "Episode_03/assets/rigs/MAX/rig.json",
+      "production_status": "reference only; separated production rig required",
+      "default_scale": 0.45
+    }
+  }
+}

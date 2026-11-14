@@ -34,7 +34,12 @@ Before the first Episode 03 motion render:
    bowl, empty shelf vase, stove OFF and three visible adults. Replace the old
    teaching/drill presentation with the story title and optional dialogue captions.
 
-The GitHub Actions renderer currently offers the original film and its existing
-Episode 02 continuation. The Episode 03 story/asset checks run in CI; an Episode 03
-motion export is not enabled until its dedicated assets and renderer are present.
-This distinction prevents a successful job from delivering the wrong movie.
+The new Episode 03 engine implements independent actors, separate voice/cue
+tracks, data-driven shots, configurable camera/attachments/depth and a continuous
+kitchen-state ledger. Its browser review gallery and dedicated GitHub Action can
+export a labelled schematic blocking preview now. Production mode rejects missing
+character-part rigs; those assets and detailed acting remain outstanding.
+
+The original-film/Episode 02 render job remains separate. Read the
+[Episode 03 pipeline guide](../animation2d/episode03/README.md) for the finished-code
+versus production-review status, shot overrides and browser workflow.

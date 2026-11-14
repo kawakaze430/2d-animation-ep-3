@@ -1,0 +1,117 @@
+{
+  "version": 1,
+  "shots": {
+    "SHOT_001": {
+      "camera": {
+        "zoom": 1,
+        "center": [
+          960,
+          540
+        ]
+      },
+      "actors": {
+        "DAN": {
+          "position": [
+            960,
+            650
+          ],
+          "scale": 0.6,
+          "depth": 100,
+          "action": {
+            "kind": "gesture"
+          }
+        },
+        "MAYA": {
+          "position": [
+            520,
+            650
+          ],
+          "scale": 0.6,
+          "depth": 101,
+          "action": {
+            "kind": "reach",
+            "target": [
+              590,
+              610
+            ]
+          }
+        },
+        "NINA": {
+          "position": [
+            1400,
+            650
+          ],
+          "scale": 0.6,
+          "depth": 102,
+          "action": {
+            "kind": "reach",
+            "target": [
+              1120,
+              650
+            ]
+          }
+        }
+      },
+      "props": [
+        {
+          "id": "yellow_bowl",
+          "position": [
+            1250,
+            660
+          ],
+          "depth": 201,
+          "state": "empty"
+        },
+        {
+          "id": "empty_vase",
+          "position": [
+            1690,
+            350
+          ],
+          "depth": 40,
+          "state": {
+            "empty": true,
+            "location": "decoration_shelf"
+          }
+        },
+        {
+          "id": "recipe_card",
+          "position": [
+            590,
+            610
+          ],
+          "depth": 203,
+          "attachment": {
+            "actor": "MAYA",
+            "hand": "right",
+            "offset": [
+              0,
+              -25
+            ],
+            "start": 0,
+            "end": 2
+          }
+        },
+        {
+          "id": "blue_bowl",
+          "position": [
+            1120,
+            650
+          ],
+          "depth": 204,
+          "state": "empty",
+          "attachment": {
+            "actor": "NINA",
+            "hand": "left",
+            "offset": [
+              0,
+              -20
+            ],
+            "start": 0,
+            "end": 2.5
+          }
+        }
+      ]
+    }
+  }
+}
