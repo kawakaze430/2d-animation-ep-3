@@ -76,7 +76,7 @@ class ReusableFactoryTests(unittest.TestCase):
             actor = Actor(name, placement=shot["actors"][name])
             pose = actor.pose(1.0)
             baseline.append(pose["hands"]["right"].position)
-            self.assertEqual(pose["active_actions"], ("reach", "look", "blink") if False else ("reach", "look"))
+            self.assertEqual(pose["active_actions"], ("reach", "look", "blink"))
         self.assertEqual(len({tuple(x) for x in baseline}), 3)
         # Preview is visibly schematic; a demo is not labelled a production movie.
         frame = render_frame(manifest, "DEMO_001", 1, size=(320, 180))
@@ -95,10 +95,10 @@ class ReusableFactoryTests(unittest.TestCase):
         self.assertEqual(shot["camera"]["zoom"], 1)
         self.assertEqual(shot["actors"]["NINA"]["actions"][0]["hand"], "left")
         self.assertEqual(shot["actors"]["MAYA"]["actions"][0]["clip"], "reach")
-        self.assertEqual(shot["props"][-1]["id"], "recipe_stand" if False else shot["props"][-1]["id"])
+        self.assertIn("recipe_stand", {p["id"] for p in shot["props"]})
         self.assertIn("interaction", next(p for p in shot["props"] if p["id"]=="blue_bowl"))
         self.assertEqual(len(base["shots"]), 80)
-        self.assertEqual(production_readiness(compiled, "SHOT_001").__len__(), 3)
+        self.assertEqual(len(production_readiness(compiled, "SHOT_001")), 3)
 
     def test_invalid_object_binding_rejects_wrong_cast_and_teleport(self):
         config = json.loads(SHOT.read_text())
