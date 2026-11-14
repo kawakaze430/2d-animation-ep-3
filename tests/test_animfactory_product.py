@@ -241,7 +241,22 @@ class IndependentProductCoreTests(unittest.TestCase):
         self.ready(False)
         from animfactory.cli import _encode_video
         output=self.root/"sample.mp4"
-        result=_encode_video(self.project,"opening",output,mode="blocking",frame_limit=3)
+        import subprocess
+        from unittest.mock import patch
+        real_spawn = subprocess.Popen
+        observed = []
+        def spawn(*args, **kwargs):
+            process = real_spawn(*args, **kwargs)
+            observed.append(process)
+            return process
+        with patch("animfactory.cli.subprocess.Popen", side_effect=spawn):
+            result=_encode_video(self.project,"opening",output,mode="blocking",frame_limit=3)
+        encoders=[p for p in observed if p.args[0]=="ffmpeg"]
+        # FFprobe is intentionally a second subprocess used for media QA.
+        self.assertEqual(len(encoders),1)
+        self.assertIsNotNone(encoders[0].returncode)
+        self.assertTrue(encoders[0].stdin.closed)
+        self.assertTrue(encoders[0].stderr.closed)
         self.assertEqual(result["frames"],3)
         self.assertEqual(result["audio"],"none")
         self.assertEqual(result["status"],"SCHEMATIC_BLOCKING_TECHNICAL_ONLY")
