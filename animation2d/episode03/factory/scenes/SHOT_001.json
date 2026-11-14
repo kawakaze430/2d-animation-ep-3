@@ -17,11 +17,8 @@
           "start": 0,
           "end": 2,
           "hand": "right",
-          "target": [
-            590,
-            610
-          ],
-          "hold_last": true
+          "hold_last": true,
+          "object": "recipe_card"
         },
         {
           "clip": "talk",
@@ -93,11 +90,8 @@
           "start": 0,
           "end": 2.5,
           "hand": "left",
-          "target": [
-            1120,
-            650
-          ],
-          "hold_last": true
+          "hold_last": true,
+          "object": "blue_bowl"
         },
         {
           "clip": "talk",
