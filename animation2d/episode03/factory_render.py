@@ -174,18 +174,21 @@ def assemble(manifest, mode, chunks_dir, output, audio_dir=None, size=(1920,1080
         raise ValueError(f"Incomplete frame timeline: {len(seen)}/{total}")
     output = Path(output)
     output.mkdir(parents=True, exist_ok=True)
-    concat_file = output/"frames.txt"
-    # Use an FFmpeg concat input file to avoid duplicating 360 large cached PNGs.
-    concat_file.write_text("ffconcat version 1.0\n" + "".join(
-        f"file '{seen[i].resolve().as_posix()}'\nduration {1/fps:.9f}\n" for i in range(total)
-    ))
+    # Symlink source frames without copying hundreds of large PNG files.
+    frames_folder = output / "frames"
+    frames_folder.mkdir(exist_ok=True)
+    for i in range(total):
+        link = frames_folder / f"frame_{i:04d}.png"
+        if link.exists() or link.is_symlink():
+            link.unlink()
+        link.symlink_to(seen[i].resolve())
     wav = Path(audio_dir) / shot["id"] / "narration.wav" if audio_dir else None
     srt = Path(audio_dir) / shot["id"] / "dialogue.srt" if audio_dir else None
     srt_output = output / f"{shot['id']}.srt"
     srt_output.write_text(srt.read_text() if srt and srt.is_file() else planned_subtitles(shot))
     video = output / f"{shot['id']}_factory_{mode}.mp4"
     cmd = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-nostdin", "-y",
-           "-safe", "0", "-f", "concat", "-i", str(concat_file)]
+           "-framerate", str(fps), "-i", str(frames_folder / "frame_%04d.png")]
     if wav and wav.is_file():
         cmd += ["-i", str(wav)]
     else:
