@@ -7,6 +7,20 @@ The default `preview15` scope produces a 15-second pipeline sample; `full` rende
 the selected 120-second lesson. The workflow is manually triggered; ordinary contributions run validation instead
 of starting an expensive movie render.
 
+## Reusable animation factory (Episode 03 and future episodes)
+
+**Architecture first:** the Episode03 multi-actor engine now supports layered, parameterized action clips, named prop targets, reusable hand/prop interactions, per-character PNG rigs, JSON scene/camera/environment presets, live browser action review, and hash-cached incremental/parallel frame rendering. Add new scene JSON and art, not a new Python animation file for every shot.
+
+- [Factory developer handoff: API, rigs, JSON scenes and rendering](animation2d/episode03/factory/README.md)
+- [SHOT_001 reusable action scene](animation2d/episode03/factory/scenes/SHOT_001.json)
+- [Action engine and mixer](animation2d/episode03/actions.py)
+- [15-second SHOT_001 schematic pilot — real 360-frame GitHub Actions render](https://github.com/kawakaze430/2d-animation-ep-3/actions/runs/43642814793)
+- [Godot vs Python renderer proof, same 15 synthetic sprites and shared action poses](https://github.com/kawakaze430/2d-animation-ep-3/actions/runs/43642367029)
+
+**Verified synthetic renderer-only benchmark:** Python/Pillow 25.69 s vs Godot 4.7.2 16.12 s for 360 frames at 960x540; Godot was about 37% faster at this **limited** task. It replays Python-solved IK, so this does not measure native Godot animation authoring or total production work, and no migration is authorized.
+
+**Production is NOT complete:** the 15-second SHOT_001 pilot is a **640x360 schematic blocking movie**, not the target 1920x1080 final animation. Real transparent, reference-matched Dan/Maya/Nina 15-part rigs, mouth sprites and approved recorded speech are missing. The production pipeline correctly rejects synthetic placeholders. The JSON scene is the reproducible production specification to fill with accepted character assets.
+
 The pipeline is:
 
 1. AI-generated character and background images.
