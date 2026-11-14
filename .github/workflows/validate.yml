@@ -49,6 +49,7 @@ jobs:
         run: |
           node --check animfactory/web/app.js
           node --check animfactory/web/rig.js
+          node --check animfactory/web/curves.js
       - name: Test validators and real 2D frames, motion, media encoding
         run: python -m unittest discover -s tests -p 'test_*.py' -v
       - name: Test renderer geometry, hand contact and cache

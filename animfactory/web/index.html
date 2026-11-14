@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" defer></script>
   <script src="/rig.js" defer></script>
+  <script src="/curves.js" defer></script>
 </head>
 <body>
   <header class="toolbar">
@@ -62,6 +63,41 @@
       <section class="timeline">
         <div class="section-head"><h2>Timeline</h2><button id="addClip">+ Add selected motion</button></div>
         <div id="trackRows"><p class="muted">Choose an actor to inspect its tracks.</p></div>
+      </section>
+      <section class="curve-editor" aria-labelledby="curveTitle">
+        <div class="section-head">
+          <h2 id="curveTitle">Reusable motion keyframe editor</h2>
+          <div>
+            <button id="curveNew" type="button">+ New clip</button>
+            <button id="curveDuplicate" type="button">Duplicate</button>
+          </div>
+        </div>
+        <p class="muted tiny">Edits modify the versioned project motion library. Both compatible characters reuse one saved source. The graph edits control points only; final frames use Python IK.</p>
+        <div class="curve-tools">
+          <label>Named clip <select id="curveMotion" aria-label="Motion clip to edit"></select></label>
+          <label>Clip duration, seconds <input id="curveDuration" type="number" min="0.01" max="300" step="0.05"></label>
+          <label class="curve-checkbox">Loop <input id="curveLoop" type="checkbox"></label>
+          <label>Channel <select id="curveChannel" aria-label="Motion curve channel"></select></label>
+          <label>Interpolation <select id="curveMode">
+            <option value="smooth">Smooth</option><option value="linear">Linear</option>
+            <option value="step">Step</option>
+          </select></label>
+        </div>
+        <div class="curve-actions">
+          <button id="curveAddTrack" type="button">+ Channel</button>
+          <button id="curveRemoveTrack" type="button">Remove channel</button>
+          <button id="curveAddKey" type="button">+ Keyframe</button>
+          <button id="curveRemoveKey" type="button">Remove selected key</button>
+          <button id="curveSave" class="primary" type="button">Save motion clip</button>
+        </div>
+        <canvas id="curveCanvas" width="720" height="240" aria-label="Drag a keyframe node to adjust normalized time and motion value"></canvas>
+        <p class="muted tiny">Key time runs from 0–1. Drag keyframe handles, or use the exact numeric fields. Smooth = cubic easing, linear = straight interpolation, step = hold value. Looped channels require matching first/last values.</p>
+        <div class="curve-tools">
+          <label>Selected normalized time <input id="curveTime" type="number" min="0" max="1" step="0.01"></label>
+          <label>Selected rig-local value <input id="curveValue" type="number" step="1"></label>
+          <button id="curveApplyKey" type="button">Apply key value</button>
+        </div>
+        <div id="curveStatus" class="muted small" role="status">Select a project motion to edit its curves.</div>
       </section>
     </main>
     <aside class="inspector">

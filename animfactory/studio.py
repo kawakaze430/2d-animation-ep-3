@@ -62,12 +62,13 @@ def handler_for(project):
         def do_GET(self):
             url = urlsplit(self.path)
             route = url.path
-            if route in ("/", "/index.html", "/app.js", "/rig.js", "/style.css"):
+            if route in ("/", "/index.html", "/app.js", "/rig.js", "/curves.js", "/style.css"):
                 name = "index.html" if route == "/" else route[1:]
                 target = WEB / name
                 mime = {"index.html": "text/html; charset=utf-8",
                         "app.js": "text/javascript; charset=utf-8",
                         "rig.js": "text/javascript; charset=utf-8",
+                        "curves.js": "text/javascript; charset=utf-8",
                         "style.css": "text/css; charset=utf-8"}
                 self.reply(200, target.read_bytes(), mime[name])
                 return
