@@ -47,8 +47,14 @@ def fingerprint(manifest_path, mode="blocking", audio_dir=None, size=(1920, 1080
     if mode not in ("blocking", "production"):
         raise ValueError("Unsupported factory mode")
     fps, duration = data.get("fps"), shot.get("duration")
-    if fps != 24 or duration != 15:
-        raise ValueError("Episode03 production contract requires 24 fps and 15 seconds")
+    if type(fps) is not int or not 1 <= fps <= 60:
+        raise ValueError("Factory frame rate must be an integer from 1 to 60")
+    if type(duration) not in (int, float) or not 0 < duration <= 300:
+        raise ValueError("Factory shot duration must be within (0, 300] seconds")
+    if abs(duration * fps - round(duration * fps)) > 1e-6:
+        raise ValueError("Duration must be an exact whole number of frames")
+    if not 1 <= round(duration * fps) <= 18000:
+        raise ValueError("Factory frame count must be 1..18000")
     # Avoid cache collisions for changes to physics, compositing, camera or export.
     mandatory = [
         Path(manifest_path), Path(__file__),
@@ -115,7 +121,7 @@ def chunk(manifest, mode, start, count, output, audio_dir=None, size=(1920, 1080
     data, shot = load(manifest)
     signature = fingerprint(manifest, mode, audio_dir, size)
     _preflight(data, shot, mode, audio_dir)
-    frames = int(shot["duration"] * data["fps"])
+    frames = int(round(shot["duration"] * data["fps"]))
     if not 0 <= start < frames or not 0 < count <= frames-start:
         raise ValueError("Chunk range out of bounds")
     output = Path(output)
@@ -156,7 +162,7 @@ def assemble(manifest, mode, chunks_dir, output, audio_dir=None, size=(1920,1080
     data, shot = load(manifest)
     signature = fingerprint(manifest, mode, audio_dir, size)
     _preflight(data, shot, mode, audio_dir)
-    fps, total = data["fps"], shot["duration"] * data["fps"]
+    fps, total = data["fps"], int(round(shot["duration"] * data["fps"]))
     reports, seen = [], {}
     for report_path in Path(chunks_dir).rglob("chunk.json"):
         report = json.loads(report_path.read_text())
@@ -205,7 +211,7 @@ def assemble(manifest, mode, chunks_dir, output, audio_dir=None, size=(1920,1080
     validation = inspect(video, shot["duration"], fps, size)
     contact = Image.new("RGB", (960, 540), "white")
     pen = ImageDraw.Draw(contact)
-    for j, index in enumerate((0,24,48,84,120,168,216,288,359)):
+    for j, index in enumerate([round(i * (total - 1) / 8) for i in range(9)]):
         with Image.open(seen[index]) as source:
             cell = source.convert("RGB").resize((320,180), Image.Resampling.LANCZOS)
         x,y=(j%3)*320,(j//3)*180
@@ -219,7 +225,7 @@ def assemble(manifest, mode, chunks_dir, output, audio_dir=None, size=(1920,1080
         "fingerprint": signature["fingerprint"], "mode": mode,
         "output_file": video.name, "output_sha256": file_hash(video),
         "output_bytes": video.stat().st_size,
-        "unique_sample_frames": len({file_hash(seen[i]) for i in (0,120,240,359)}),
+        "unique_sample_frames": len({file_hash(seen[round(i*(total-1)/3)]) for i in range(4)}),
         "frame_render_wall_s_sum_workers": sum(r["frame_render_wall_s"] for r in reports),
         "encoding_wall_s": encode_time, "workers": reports,
         "media_validation": validation, "creative_review": "PENDING",
