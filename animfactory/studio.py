@@ -67,6 +67,7 @@ def handler_for(project):
                 target = WEB / name
                 mime = {"index.html": "text/html; charset=utf-8",
                         "app.js": "text/javascript; charset=utf-8",
+                        "rig.js": "text/javascript; charset=utf-8",
                         "style.css": "text/css; charset=utf-8"}
                 self.reply(200, target.read_bytes(), mime[name])
                 return
