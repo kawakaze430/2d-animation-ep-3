@@ -1,0 +1,30 @@
+/* A single editor UI with readable controls; no canvas framework dependency in v1.
+   Adopt Konva later for bone/pivot manipulation after editor API is stable. */
+:root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;background:#0c111a;color:#eff4ff}
+*{box-sizing:border-box}body{margin:0}button,input,select{font:inherit}
+button{background:#283449;border:1px solid #425270;color:#ecf3ff;border-radius:8px;padding:7px 10px;cursor:pointer}button:hover{background:#324464}button:disabled{opacity:.35;cursor:not-allowed}
+button.primary{background:#467be6;border-color:#5b95ff;color:white}button.danger{border-color:#a54852;color:#f6b7ba}
+input,select{background:#182230;color:#edf2fa;border:1px solid #384861;border-radius:7px;padding:8px}
+input:focus,select:focus,button:focus-visible{outline:2px solid #6194f3;outline-offset:2px}
+h1{font-size:18px;margin:0 0 5px}h2{font-size:16px;margin:0 0 12px}h3{font-size:14px;margin:0 0 9px}
+p{margin:5px 0 11px}.muted{color:#9faec4}.tiny{font-size:11px;line-height:1.5}.small{font-size:12px}
+.toolbar{height:60px;padding:10px 19px;background:#151e2a;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #293647}
+.toolbar strong{letter-spacing:1px;font-size:17px}.toolbar strong span{color:#6aabff}.toolbar small{margin-left:15px;font-size:12px;color:#9faec4}.controls{display:flex;align-items:center;gap:9px}
+#saveState{font-size:12px;color:#a1dcac}.workspace{display:grid;grid-template-columns:225px minmax(330px,1fr) 230px;min-height:calc(100vh - 60px)}
+.sidebar,.inspector{background:#111926;padding:17px 13px;min-width:0}.sidebar{border-right:1px solid #293647}.inspector{border-left:1px solid #293647}
+section{margin-top:25px}.section-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.section-head button{font-size:12px}
+.list{display:flex;flex-direction:column;gap:4px}.list button{background:transparent;border:1px solid transparent;padding:9px;text-align:left;width:100%}.list button.selected{border:1px solid #386dcb;background:#253d64}
+.list button:hover{background:#26364c}.scrollbox{max-height:265px;overflow:auto}.sidebar input[type=search]{width:100%;margin-bottom:9px}
+main{padding:24px;min-width:0}.viewport{width:100%;min-height:250px;aspect-ratio:16/9;background:#1e2731;display:grid;place-items:center;position:relative;border:1px solid #344156;border-radius:12px;overflow:hidden}
+.viewport img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
+.frame-error{position:absolute;inset:0;display:grid;place-items:center;background:#281c2a;color:#ffbdc2;padding:20px;text-align:center}
+.frame-error[hidden], [hidden]{display:none!important}
+.transport{display:flex;align-items:center;gap:12px;margin-top:13px}.transport input{flex:1;padding:0}.transport output{font-variant-numeric:tabular-nums;font-size:12px;min-width:85px}
+a{color:#8ab9ff;font-size:13px}.timeline{border:1px solid #344156;border-radius:12px;padding:15px;margin-top:25px;background:#151e2a}
+.track{display:flex;gap:8px;align-items:center;border-bottom:1px solid #2d3b50;padding:9px 3px}
+.track button{flex:1;text-align:left;background:#22324a}.track button.selected{outline:2px solid #5380dd}
+.track .time{font-size:11px;color:#c7d1e2;font-variant-numeric:tabular-nums}
+.inspector label{display:flex;flex-direction:column;gap:5px;margin-top:12px;font-size:12px;color:#c1cfe3}.inspector input{width:100%}
+.inspector button.primary,.inspector button.danger{margin-top:13px;width:100%}.diagnostics{border-top:1px solid #344156;padding-top:14px}
+@media(max-width:980px){.workspace{grid-template-columns:170px minmax(280px,1fr)}.inspector{grid-column:1/-1;border-left:0;border-top:1px solid #293647}.inspector label{display:inline-flex;width:30%;margin-right:2%}}
+@media(max-width:620px){.workspace{display:block}.sidebar,.inspector{border:0;border-bottom:1px solid #293647}main{padding:12px}.toolbar small{display:none}.viewport{min-height:200px}.transport{gap:7px}}
