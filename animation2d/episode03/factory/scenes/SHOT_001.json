@@ -1,0 +1,210 @@
+{
+  "version": 1,
+  "shot": "SHOT_001",
+  "environment": "home_kitchen",
+  "camera": "three_shot",
+  "actors": {
+    "MAYA": {
+      "position": [
+        520,
+        650
+      ],
+      "scale": 0.6,
+      "depth": 101,
+      "actions": [
+        {
+          "clip": "reach",
+          "start": 0,
+          "end": 2,
+          "hand": "right",
+          "target": [
+            590,
+            610
+          ],
+          "hold_last": true
+        },
+        {
+          "clip": "talk",
+          "start": 0.5,
+          "end": 2.47,
+          "emotion": "happy"
+        },
+        {
+          "clip": "look",
+          "start": 0,
+          "end": 4,
+          "degrees": 7
+        },
+        {
+          "clip": "blink",
+          "start": 3.2,
+          "end": 3.38
+        }
+      ]
+    },
+    "DAN": {
+      "position": [
+        960,
+        650
+      ],
+      "scale": 0.6,
+      "depth": 100,
+      "actions": [
+        {
+          "clip": "gesture",
+          "start": 2.72,
+          "end": 7.27,
+          "hand": "right",
+          "target": [
+            1025,
+            565
+          ],
+          "blend": 0.3,
+          "emotion": "curious"
+        },
+        {
+          "clip": "talk",
+          "start": 2.72,
+          "end": 7.27
+        },
+        {
+          "clip": "react",
+          "start": 7.5,
+          "end": 8.2,
+          "lean": -3
+        },
+        {
+          "clip": "blink",
+          "start": 9,
+          "end": 9.2
+        }
+      ]
+    },
+    "NINA": {
+      "position": [
+        1250,
+        650
+      ],
+      "scale": 0.6,
+      "depth": 102,
+      "actions": [
+        {
+          "clip": "reach",
+          "start": 0,
+          "end": 2.5,
+          "hand": "left",
+          "target": [
+            1120,
+            650
+          ],
+          "hold_last": true
+        },
+        {
+          "clip": "talk",
+          "start": 7.52,
+          "end": 10.35,
+          "emotion": "happy"
+        },
+        {
+          "clip": "look",
+          "start": 2.5,
+          "end": 5,
+          "degrees": -8
+        },
+        {
+          "clip": "blink",
+          "start": 6.1,
+          "end": 6.24
+        }
+      ]
+    }
+  },
+  "props": [
+    {
+      "id": "recipe_stand",
+      "position": [
+        590,
+        665
+      ],
+      "depth": 201,
+      "shape": "rectangle",
+      "size": [
+        112,
+        15
+      ],
+      "color": "#72523C"
+    },
+    {
+      "id": "recipe_card",
+      "position": [
+        590,
+        610
+      ],
+      "depth": 203,
+      "shape": "rectangle",
+      "size": [
+        85,
+        95
+      ],
+      "color": "#F0ECE3",
+      "interaction": {
+        "actor": "MAYA",
+        "hand": "right",
+        "attach_at": 0,
+        "release_at": 2,
+        "offset": [
+          0,
+          0
+        ],
+        "landing": [
+          590,
+          610
+        ]
+      }
+    },
+    {
+      "id": "blue_bowl",
+      "position": [
+        1120,
+        650
+      ],
+      "depth": 204,
+      "shape": "ellipse",
+      "size": [
+        114,
+        63
+      ],
+      "color": "#2948BD",
+      "state": "empty",
+      "interaction": {
+        "actor": "NINA",
+        "hand": "left",
+        "attach_at": 0,
+        "release_at": 2.5,
+        "offset": [
+          0,
+          0
+        ],
+        "landing": [
+          1120,
+          650
+        ]
+      }
+    },
+    {
+      "id": "yellow_bowl",
+      "position": [
+        1300,
+        660
+      ],
+      "depth": 202,
+      "shape": "ellipse",
+      "size": [
+        110,
+        61
+      ],
+      "color": "#DFC245",
+      "state": "empty"
+    }
+  ]
+}
