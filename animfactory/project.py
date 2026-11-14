@@ -119,7 +119,15 @@ class Project:
         if directory.is_symlink() or (directory.exists() and any(directory.iterdir())):
             raise FileExistsError("Create requires a new/empty project directory")
         directory.mkdir(parents=True, exist_ok=True)
-        project = cls(directory, empty_project(project_id, title, canvas=canvas, fps=fps))
+        # Seed from our existing generic motion library ONCE. Each new
+        # project owns its independent snapshot, not a live Episode03 file.
+        from animation2d.episode03.motion_clips import DEFAULT_LIBRARY
+        initial = empty_project(project_id, title, canvas=canvas, fps=fps)
+        motions = json.loads(DEFAULT_LIBRARY.read_text(encoding="utf-8"))
+        initial["motion_library"] = {
+            "version": 1, "clips": motions["clips"], "poses": motions["poses"]
+        }
+        project = cls(directory, initial)
         project.save()
         return project
 
@@ -165,8 +173,8 @@ class Project:
         valid_id(character_id, "character ID")
         if any(c not in ACTOR_NAME_CHARS for c in character_id) or len(character_id) > 32:
             raise ValueError("Renderer character IDs must use letters/digits/underscore <=32 characters")
-        if character_id in self.doc["characters"]:
-            raise FileExistsError(f"Character already registered: {character_id}")
+        if character_id in self.doc["characters"] or character_id + "_rig" in self.doc["assets"]:
+            raise FileExistsError(f"Character/rig asset already registered: {character_id}")
         rig, files = _read_rig(source)
         target = self.root / "assets" / "rigs" / character_id
         if target.exists():
