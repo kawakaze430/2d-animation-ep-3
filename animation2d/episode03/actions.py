@@ -121,7 +121,10 @@ class ActionMixer:
             if not isinstance(specs, list):
                 raise ValueError("actions must be an array of clips")
         else:
-            specs = [placement.get("action", {"kind": "idle"})]
+            original = dict(placement.get("action", {"kind": "idle"}))
+            original.setdefault("hold_last", action_name(original) in HAND_ACTIONS)
+            original["_legacy"] = True
+            specs = [original]
         self.actions = tuple(validate_action(dict(a), self.duration) for a in specs)
         self.origin = _point(placement.get("position", [960, 600]), "actor.position")
 
@@ -170,8 +173,8 @@ class ActionMixer:
                 for side, target in selected.items():
                     # A scripted target is optional: gesture defaults to a
                     # natural shoulder-space communication pose.
-                    effect = p * envelope
-                    if clip == "gesture" and "target" not in spec and not targets:
+                    effect = (envelope if spec.get("_legacy") and targets else p * envelope)
+                    if clip == "gesture" and "target" not in spec and not targets and not spec.get("_legacy"):
                         effect = max(effect, envelope)
                     if side in result.hand_targets:
                         prior_target, prior_weight, prior_clip, prior_p = result.hand_targets[side]
