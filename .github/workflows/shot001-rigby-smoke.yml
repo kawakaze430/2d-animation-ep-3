@@ -1,0 +1,42 @@
+name: Rigby2D headless MCP export smoke (NOT Episode 03)
+
+on:
+  pull_request:
+    paths:
+      - benchmark/shot001/**
+      - .github/workflows/shot001-rigby-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      RIGBY_SHA: b1792f67896de7d30503ffc8340801699b73f08d
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '20'
+      - name: Pin and fetch official Rigby2D code on GitHub-hosted Linux
+        run: |
+          mkdir -p third_party/rigby2d
+          git -C third_party/rigby2d init -q
+          git -C third_party/rigby2d remote add origin https://github.com/jaisurya-dev-art/rigby2d.git
+          git -C third_party/rigby2d fetch --depth 1 origin "$RIGBY_SHA"
+          git -C third_party/rigby2d checkout -q --detach FETCH_HEAD
+          test "$(git -C third_party/rigby2d rev-parse HEAD)" = "$RIGBY_SHA"
+          node third_party/rigby2d/src/mcp/server.js --help
+      - name: Generate 12 genuine Rigby skeletal PNG frames from test-only art
+        run: |
+          node benchmark/shot001/smoke.mjs third_party/rigby2d build/shot001/smoke
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: Rigby2D-Headless-Smoke-NOT-Episode03
+          path: build/shot001/smoke/
+          if-no-files-found: warn
+          retention-days: 14
