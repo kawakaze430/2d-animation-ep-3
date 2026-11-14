@@ -14,6 +14,7 @@ from typing import Any
 import numpy as np
 
 from .kinematics import ease
+from .motion_clips import default_library
 
 # These names are stable public API. A clip's parameters, not its Python class,
 # are what differs between actors, props and subsequent episodes.
@@ -25,6 +26,7 @@ LIBRARY = {
     "put_down": "hands", "carry": "hands",
     "pour": "hands", "stir": "hands", "eat": "hands",
     "react": "body", "gesture": "hands",
+    "keyframed": "skeletal", "pose": "skeletal",
 }
 ALIASES = {
     "walking": "walk", "running": "run", "sitting": "sit",
@@ -79,6 +81,8 @@ def validate_action(spec: dict, duration: float) -> dict:
             _point(target, f"{name}.{side}")
     if spec.get("hand", "right") not in ("left", "right"):
         raise ValueError("hand must be left or right")
+    if name in ("keyframed", "pose") and (not isinstance(spec.get("source"), str) or not spec["source"]):
+        raise ValueError(f"{name}: a named source clip/pose is required")
     if "emotion" in spec and spec["emotion"] not in EMOTIONS:
         raise ValueError("Unknown emotion")
     if "object" in spec and (not isinstance(spec["object"], str) or not spec["object"]):
@@ -111,9 +115,10 @@ class ActionMixer:
     Clip intervals are shot-local; end-state locomotion is held after completion.
     """
 
-    def __init__(self, placement: dict, duration: float, *, objects: dict | None = None):
+    def __init__(self, placement: dict, duration: float, *, objects: dict | None = None, library=None):
         self.placement = placement
         self.objects = dict(objects or {})
+        self.clip_library = library or default_library()
         self.duration = _number(duration, "shot duration")
         if self.duration <= 0:
             raise ValueError("Shot duration must be positive")
@@ -129,6 +134,8 @@ class ActionMixer:
         resolved = []
         for item in specs:
             item = validate_action(dict(item), self.duration)
+            if action_name(item) in ("keyframed", "pose"):
+                self.clip_library.sample(action_name(item), item["source"], 0)
             obj = item.get("object")
             if obj is not None:
                 if obj not in self.objects:
@@ -203,6 +210,33 @@ class ActionMixer:
                             desired = previous * (1 - effect) + desired * effect
                         effect = max(effect, previous_weight)
                     result.hand_targets[side] = (desired, effect, clip, p)
+            elif clip in ("keyframed", "pose"):
+                # One named local rig clip is instantiated for any actor.  Clip
+                # coordinates are pelvis-relative rig units (not world pixels),
+                # allowing the same source clip across different actor scales.
+                sample_time = min(t, end) - start
+                channels = self.clip_library.sample(clip, spec["source"], sample_time * speed)
+                actor_scale = _number(self.placement.get("scale", 1), "actor scale")
+                if "root_x" in channels or "root_y" in channels:
+                    result.root += np.array([channels.get("root_x", 0),
+                                             channels.get("root_y", 0)], dtype=float) * actor_scale * envelope
+                for side in ("left", "right"):
+                    x, y = side + "_x", side + "_y"
+                    if x in channels and y in channels:
+                        world = result.root + np.array([channels[x], channels[y]]) * actor_scale
+                        if side in result.hand_targets:
+                            previous, old_weight, _old_clip, _old_progress = result.hand_targets[side]
+                            if previous is not None:
+                                world = previous * (1 - envelope) + world * envelope
+                            strength = max(old_weight, envelope)
+                        else:
+                            strength = envelope
+                        result.hand_targets[side] = (world, strength, clip, p)
+                result.sitting = max(result.sitting, channels.get("sitting", 0) * envelope)
+                result.lean += channels.get("lean", 0) * envelope
+                result.head_turn += channels.get("head_turn", 0) * envelope
+                if "blink" in channels:
+                    result.blink = channels["blink"] >= .5
             elif clip == "look":
                 if "target" in spec:
                     result.look = _point(spec["target"], "look.target")
