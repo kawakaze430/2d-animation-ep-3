@@ -380,6 +380,8 @@ def render_frame(manifest,shot_id,local_time,mode='blocking',size=(960,540),audi
                     transform=attachment_transform(actors[name],local_time,interaction,duration)
                     if not interaction.get('rotate_with_hand',False):
                         transform.rotation=float(item.get('rotation',0))
+                    if not interaction.get('follow_actor_scale',False):
+                        transform.scale=1  # props retain size when gripped/released
             else:
                 attachment=item.get('attachment')
                 if attachment and attachment.get('start',0)<=local_time<attachment.get('end',duration):
