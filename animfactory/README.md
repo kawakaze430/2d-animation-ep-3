@@ -69,6 +69,57 @@ Clip JSON uses the pre-existing strict named track shape from
 animation2d/episode03/motion_clips.py. Poses use a simple channel→number map;
 pass --pose when importing a pose.
 
+## Visual 15-layer rigging: real browser import and pivot authoring
+
+The existing 15-part cutout-v1 schema and authoritative Pillow/IK solver remain
+unchanged. Rig authoring is integrated into the same local browser studio.
+
+1. Create a new independent project, launch studio, click **Rig studio · Import & edit**.
+2. Drag/drop or select 15 transparent PNG body-part images. Filenames must map to
+   head.png, torso.png, pelvis.png and six left/six right roles such as
+   upper_arm_left.png, forearm_left.png, hand_right.png, thigh_right.png,
+   shin_left.png and foot_right.png. Both dot and underscore side names work.
+3. Confirm all 15 thumbnails and missing-layer warnings. Enter a character ID,
+   source and rights metadata; click **Import verified 15-part rig**.
+4. Select a character and bone. The full character preview is rendered by the
+   real Python IK/renderer. The separate source PNG canvas lets you **drag the
+   red pivot or cyan bone end**. Hold Shift to select the bone end, or change
+   numeric pivot/end coordinates, sprite mirror and depth explicitly.
+5. Adjust neck/shoulder/hip joint anchors and thigh/shin/arm lengths as needed;
+   use the right-arm reach toggle to preview IK after saving.
+6. Each save creates a content-addressed immutable rig JSON revision. The
+   original sprite PNGs and rig.json remain unchanged; choose a previous version
+   to restore it or use Undo/Redo. Project changes survive reopening the project.
+
+Source sprite control-point coordinates differ from world coordinates. Complete
+technical rigs are NOT visually reviewed character art: current bone hierarchy
+is fixed to 15 anatomical roles, and custom parent roles/rotation limits,
+two-handed physics, PSD/SVG, facial sprites, fully automatic segmentation or
+reconstruction of hidden anatomy are NOT implemented here.
+
+Rig revisions are stored as rig_edit_<SHA256>.json within the character's
+assets/rigs/<ID>/ directory; checksums, source and license metadata are
+retained. Rig selection and restoration remain valid after app restarts.
+Artwork import is intentionally NOT undone by general timeline undo, because
+its immutable physical source files remain registered. Import resets the
+session's in-memory undo stack; reimporting replacement artwork under the same
+character ID is a subsequent milestone. A new ID is always safe.
+
+Security/limits: exact 15-role whitelist, validated base64/PNG/alpha, 4 MiB
+per layer, at most 48 MiB decoded artwork combined, 16M image-pixel bound,
+local-only service, strict same-origin edits, project revision guard, and
+no user-controlled file paths. All operations run offline/CPU without AI.
+
+Technical verification:
+
+    python -m unittest discover -s tests -p 'test_rigging_studio.py' -v
+    node --check animfactory/web/rig.js
+
+Konva's maintained MIT canvas library was evaluated for a future sophisticated
+bone hierarchy editor. This milestone deliberately reuses native browser
+Canvas for source-pivot edits rather than introducing a new dependency or CDN.
+See issue #8 for PSD/SVG and deeper bone relationships.
+
 ## Browser editor — local, no desktop installation
 
     python -m animfactory studio build/new-film --port 8190
